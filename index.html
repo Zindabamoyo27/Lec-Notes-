@@ -1,0 +1,1271 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HIV Interactive Lesson</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout concept: a cinema-style player (dark screen, chapter timeline, sticky caption dock) on a quiet reference page with chapters, transcript and drug codes below. */
+:root{
+  --bg:#EAF0F6; --card:#FFFFFF; --fg:#0E1A2B; --mute:#56677C; --line:#D0DAE6; --accent:#C42B3A; --accent-fg:#FFFFFF; --chip:#E1E9F2;
+  --font-d:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-b:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-m:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  /* the screen keeps one dark palette in both themes */
+  --s-bg:#0D1828; --s-1:#14233A; --s-2:#1C3050; --s-line:#2B4566; --s-fg:#ECF2F9; --s-mute:#9FB4CB; --dock:#0A1322;
+  --c-virus:#FF5C61; --c-cell:#33C4BE; --c-nrti:#F6B93B; --c-nnrti:#A98BFF; --c-pi:#5BA8FF; --c-ii:#7BD389; --c-entry:#FF84C0;
+  --c-ok:#5ED08C; --c-bad:#FF7878; --c-warn:#FFC15C; --ink:#0D1828;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#080F1B; --card:#0F1B2E; --fg:#E7EEF6; --mute:#94A8BF; --line:#203450; --accent:#FF5C65; --accent-fg:#0D1828; --chip:#172640; color-scheme:dark }
+}
+:root[data-theme="dark"]{ --bg:#080F1B; --card:#0F1B2E; --fg:#E7EEF6; --mute:#94A8BF; --line:#203450; --accent:#FF5C65; --accent-fg:#0D1828; --chip:#172640; color-scheme:dark }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 var(--font-b);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 48px}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--c-warn);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto;min-width:0}
+
+/* page header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px 24px;flex-wrap:wrap;margin-bottom:14px}
+.brand{display:flex;gap:12px;align-items:center;min-width:0}
+.ribbon{width:26px;height:34px;flex:none}
+.brand h1{font:700 clamp(20px,3vw,28px)/1.1 var(--font-d);margin:0;letter-spacing:-.01em}
+.brand p{margin:2px 0 0;color:var(--mute);font-size:14px}
+.resume{font-size:14px;color:var(--mute)}
+
+/* player */
+.player{border-radius:18px;background:var(--s-bg);color:var(--s-fg);border:1px solid var(--s-line);overflow:clip;position:relative}
+.stagewrap{position:relative}
+.stage{padding:22px clamp(14px,3vw,30px) 30px;min-height:420px}
+.cover{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(900px 400px at 20% 0%,rgba(255,92,97,.16),transparent 60%),radial-gradient(700px 380px at 100% 100%,rgba(51,196,190,.14),transparent 60%),var(--s-bg)}
+.cover[hidden]{display:none}
+.cover-in{max-width:640px;display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.cover h2{font:700 clamp(30px,5.4vw,52px)/1.02 var(--font-d);margin:0;letter-spacing:-.02em;text-wrap:balance}
+.cover p{margin:0;color:var(--s-mute);font-size:17px;max-width:56ch}
+.cover ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:8px 14px;color:var(--s-mute);font-size:14px}
+.cover li::before{content:"";display:inline-block;width:7px;height:7px;border-radius:2px;background:var(--c-cell);margin-right:7px}
+.btn{display:inline-flex;align-items:center;gap:10px;border:0;border-radius:999px;background:var(--c-virus);color:#1a0508;font-weight:700;padding:13px 24px;font-size:17px}
+.btn svg{width:22px;height:22px}
+.btn.ghost{background:transparent;color:var(--s-fg);border:1.5px solid var(--s-line);padding:11px 20px;font-size:15px;font-weight:600}
+.btn.sm{padding:9px 18px;font-size:15px}
+.cover .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* dock */
+.dock{position:sticky;bottom:0;z-index:6;background:var(--dock);border-top:1px solid var(--s-line);padding:10px clamp(14px,3vw,24px) calc(10px + env(safe-area-inset-bottom,0px))}
+.wait{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:color-mix(in srgb,var(--c-warn) 16%,transparent);border:1px solid var(--c-warn);border-radius:12px;padding:8px 12px;margin-bottom:8px;font-size:15px}
+.wait[hidden]{display:none}
+.cap{font-size:clamp(16px,1.5vw,18.5px);line-height:1.5;min-height:3em;margin:0 0 8px;text-wrap:pretty}
+.cap[hidden]{display:none}
+.bar{height:3px;background:#1E3350;border-radius:2px;overflow:hidden;margin-bottom:6px}
+.bar i{display:block;height:100%;width:0;background:var(--c-warn)}
+.tl{display:flex;gap:3px;align-items:center}
+.seg{flex:var(--w,1) 1 0;min-width:4px;height:20px;position:relative;padding:0;border:0;background:none;border-radius:4px}
+.seg::before{content:"";position:absolute;left:0;right:0;top:7px;height:6px;border-radius:3px;background:#213756}
+.seg i{position:absolute;left:0;top:7px;height:6px;border-radius:3px;background:var(--c-cell);width:var(--p,0%)}
+.seg.qz::before{background:#4b3d1c}.seg.qz i{background:var(--c-warn)}
+.seg.cur::before{outline:1.5px solid var(--s-fg);outline-offset:1px}
+.ctrls{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;margin-top:6px}
+.cl{display:flex;gap:4px;align-items:center}
+.ib{width:42px;height:42px;border-radius:50%;border:0;background:transparent;color:var(--s-fg);display:grid;place-items:center;padding:0}
+.ib:hover{background:#1B2F4C}
+.ib svg{width:22px;height:22px;fill:currentColor}
+.ib.play{width:50px;height:50px;background:var(--c-virus);color:#1a0508}
+.ib.play:hover{background:#ff7a7e}
+.ib.on{color:var(--c-warn)}
+.time{font:500 13px var(--font-m);color:var(--s-mute);margin-left:4px;white-space:nowrap}
+.sp{flex:1 1 20px}
+.sel{background:#14233A;border:1px solid var(--s-line);border-radius:10px;padding:7px 9px;font-size:14px;color:var(--s-fg);max-width:190px;min-width:0}
+.cc{font:700 12px var(--font-m);width:auto;padding:0 10px;border-radius:8px;border:1.5px solid currentColor;height:30px}
+
+/* below player */
+.below{margin-top:22px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:16px}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;font-weight:600;color:var(--mute);border-radius:8px 8px 0 0}
+.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.tp[hidden]{display:none}
+.chgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr))}
+.chb{text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start}
+.chb:hover{border-color:var(--accent)}
+.chb .n{font:600 13px var(--font-m);color:var(--mute);min-width:1.8em;padding-top:2px}
+.chb b{display:block;font-weight:600;line-height:1.3}
+.chb small{color:var(--mute)}
+.chb.done .n::after{content:"\2713";color:#1f9d57;margin-left:3px}
+.chb.cur{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
+.tr h3{font:700 18px var(--font-d);margin:22px 0 6px}
+.tr p{margin:0 0 6px;padding:6px 10px;border-radius:8px;cursor:pointer;max-width:78ch}
+.tr p:hover{background:var(--chip)}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+table.codes{border-collapse:collapse;width:100%;min-width:520px}
+.codes th,.codes td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.codes th{font:600 12px var(--font-m);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.codes td:first-child{font:600 14px var(--font-m);white-space:nowrap}
+.foot{margin-top:26px;color:var(--mute);font-size:14px;max-width:80ch}
+
+/* ===== scene components (all inside the dark screen) ===== */
+.scene{display:flex;flex-direction:column;gap:16px;min-width:0}
+.sh{display:flex;flex-direction:column;gap:2px}
+.kick{font:600 12px var(--font-m);letter-spacing:.14em;text-transform:uppercase;color:var(--s-mute)}
+.sh h2{font:700 clamp(24px,3.4vw,36px)/1.08 var(--font-d);margin:0;letter-spacing:-.015em;text-wrap:balance}
+.scene [data-s]:not(.on),.scene [data-at]:not(.on){display:none}
+.scene .on[data-s],.scene .on[data-at]{animation:rise .5s ease both;scroll-margin-bottom:300px}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,225px),1fr))}
+.grid.g3{grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+.grid.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+.split{display:grid;gap:16px;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);align-items:start}
+.split.even{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:760px){.split,.split.even{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--s-1);border:1px solid var(--s-line);border-radius:14px;padding:14px 16px;min-width:0}
+.panel h3{font:600 12px var(--font-m);letter-spacing:.1em;text-transform:uppercase;color:var(--s-mute);margin:0 0 8px}
+.panel p{margin:0 0 8px}.panel p:last-child{margin-bottom:0}
+.panel.hl,.hl.panel{border-color:var(--c-warn);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-warn) 22%,transparent)}
+.big{font:700 clamp(19px,2.2vw,25px)/1.2 var(--font-d);margin:0 0 6px}
+.mute{color:var(--s-mute)}
+.sm{font-size:14px}
+.tag{display:inline-block;font:600 11px var(--font-m);letter-spacing:.08em;text-transform:uppercase;border-radius:6px;padding:3px 7px;background:var(--s-2);color:var(--s-mute)}
+.list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+.list li{position:relative;padding-left:18px}
+.list li::before{content:"";position:absolute;left:0;top:.62em;width:8px;height:8px;border-radius:2px;background:var(--lc,var(--c-cell))}
+.list li.hl{background:color-mix(in srgb,var(--c-warn) 14%,transparent);border-radius:6px;box-shadow:0 0 0 4px color-mix(in srgb,var(--c-warn) 14%,transparent)}
+.note{border:1px dashed var(--c-warn);border-radius:12px;padding:11px 14px;background:color-mix(in srgb,var(--c-warn) 9%,transparent);font-size:15px}
+.note b{color:var(--c-warn)}
+.good{--lc:var(--c-ok)}.bad{--lc:var(--c-bad)}
+.chip{display:inline-flex;align-items:center;font:600 13px/1 var(--font-m);padding:5px 8px;border-radius:7px;color:var(--cc,var(--s-fg));border:1.5px solid var(--cc,var(--s-line));background:color-mix(in srgb,var(--cc,#fff) 13%,transparent);white-space:nowrap}
+.chip.lg{font-size:15px;padding:8px 11px}
+.c-nrti{--cc:var(--c-nrti)}.c-nnrti{--cc:var(--c-nnrti)}.c-pi{--cc:var(--c-pi)}.c-ii{--cc:var(--c-ii)}.c-entry{--cc:var(--c-entry)}
+.c-virus{--cc:var(--c-virus)}.c-cell{--cc:var(--c-cell)}.c-warn{--cc:var(--c-warn)}.c-ok{--cc:var(--c-ok)}.c-bad{--cc:var(--c-bad)}.c-x{--cc:var(--s-mute)}
+.reg{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
+.reg i{font-style:normal;color:var(--s-mute);font-weight:600}
+.regs{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.or{font:600 12px var(--font-m);color:var(--s-mute);letter-spacing:.1em;text-transform:uppercase}
+.k{font:600 12px var(--font-m);letter-spacing:.08em;text-transform:uppercase;color:var(--s-mute);margin:10px 0 5px}
+.k:first-child{margin-top:0}
+.legend{display:flex;gap:6px 14px;flex-wrap:wrap}
+.arrowrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.arrowrow .ar{color:var(--s-mute);font-size:20px}
+.num{font:700 15px var(--font-m);display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--s-2);color:var(--s-fg);flex:none}
+
+/* clickable lists / pickers */
+.pick{display:grid;gap:14px;grid-template-columns:minmax(0,.9fr) minmax(0,1.4fr);align-items:start}
+@media (max-width:760px){.pick{grid-template-columns:minmax(0,1fr)}}
+.pk-list{display:flex;flex-direction:column;gap:6px}
+.pk{text-align:left;background:var(--s-1);border:1px solid var(--s-line);border-radius:10px;padding:9px 12px;color:var(--s-fg);line-height:1.3;font-weight:500}
+.pk small{display:block;color:var(--s-mute);font-weight:400;margin-top:2px}
+.pk:hover{border-color:var(--c-cell)}
+.pk.act{background:color-mix(in srgb,var(--c-cell) 18%,var(--s-1));border-color:var(--c-cell)}
+.pk-d{display:none;background:var(--s-1);border:1px solid var(--s-line);border-radius:14px;padding:14px 16px}
+.pk-d.act{display:block;animation:rise .35s ease both}
+.pk-d h4{font:700 19px/1.2 var(--font-d);margin:0 0 10px}
+.pk-d p{margin:0 0 6px}
+
+/* lifecycle diagram */
+.lcsvg{width:100%;height:auto;display:block;background:radial-gradient(500px 300px at 65% 50%,rgba(51,196,190,.08),transparent 70%);border-radius:14px;border:1px solid var(--s-line)}
+.lcsvg text{font-family:'IBM Plex Mono',monospace;font-weight:600}
+.lc-virus,.lc-core,.lc-env,.lc-dna,.lc-int,.lc-parts,.lc-bud,.lc-mature,.lc-hit{transition:transform 1.3s cubic-bezier(.5,.1,.2,1),opacity .8s ease}
+.lc-virus{transform:translate(100px,210px)}
+.ge1 .lc-virus{transform:translate(300px,210px)}
+.ge2 .lc-virus{transform:translate(300px,210px);opacity:.28}
+.lc-core{transform:translate(100px,210px)}
+.ge1 .lc-core{transform:translate(300px,210px)}
+.ge2 .lc-core{transform:translate(425px,205px)}
+.lc-rna-in{opacity:1;transition:opacity .8s}
+.ge3 .lc-rna-in{opacity:.25}
+.lc-dna{opacity:0;transform:translate(440px,268px)}
+.ge3 .lc-dna{opacity:1}
+.ge4 .lc-dna{transform:translate(560px,215px);opacity:0;transition:transform 1.3s cubic-bezier(.5,.1,.2,1),opacity .6s ease 1s}
+.lc-int{opacity:0}
+.ge4 .lc-int{opacity:1}
+.lc-parts{opacity:0}
+.ge5 .lc-parts{opacity:1}
+.lc-bud{opacity:0}
+.ge6 .lc-bud{opacity:1}
+.lc-mature{opacity:0}
+.ge7 .lc-mature{opacity:1}
+.lc-hit{opacity:0}
+.lc-mk circle{fill:var(--s-2);stroke:var(--s-line);stroke-width:2}
+.lc-mk text{fill:var(--s-fg);font-size:19px}
+.lc-mk.hl circle{fill:var(--c-warn);stroke:var(--c-warn)}
+.lc-mk.hl text{fill:#0D1828}
+.lc-ring{fill:none;stroke-width:5}
+.lcsteps{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));margin-top:2px}
+.lcs{display:flex;gap:10px;align-items:flex-start;text-align:left;background:var(--s-1);border:1px solid var(--s-line);border-radius:10px;padding:8px 10px;color:var(--s-fg);line-height:1.3;font-size:14px}
+.lcs:hover{border-color:var(--c-cell)}
+.lcs.hl{border-color:var(--c-warn);background:color-mix(in srgb,var(--c-warn) 12%,var(--s-1))}
+.lcs b{display:block;font-weight:600}
+.lcs .chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+
+/* chart */
+.chart{width:100%;height:auto;display:block;background:var(--s-1);border:1px solid var(--s-line);border-radius:14px}
+.chart text{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--s-mute)}
+.chart .band{opacity:.14;transition:opacity .5s}
+.chart .band.hl{opacity:.5}
+.chart .lbl{font-size:12px;font-weight:600;fill:var(--s-fg)}
+.rng{width:100%;accent-color:var(--c-cell);height:28px}
+.status{border-radius:12px;padding:10px 14px;border:1.5px solid var(--c-ok);background:color-mix(in srgb,var(--c-ok) 12%,transparent)}
+.status.danger{border-color:var(--c-bad);background:color-mix(in srgb,var(--c-bad) 12%,transparent)}
+.status b{display:block;font-size:17px}
+.readout{font:700 34px/1 var(--font-d);color:var(--c-cell)}
+.readout small{font:500 13px var(--font-m);color:var(--s-mute);margin-left:6px}
+
+/* builder / choices */
+.slots{display:flex;gap:10px;flex-wrap:wrap}
+.slot{min-width:110px;min-height:54px;border:2px dashed var(--s-line);border-radius:12px;display:grid;place-items:center;padding:6px 10px;color:var(--s-mute);font-size:13px}
+.slot.full{border-style:solid}
+.palette{display:flex;gap:8px;flex-wrap:wrap}
+.pal{cursor:pointer;border-radius:9px}
+.pal.sel{outline:3px solid var(--c-warn);outline-offset:2px}
+.opt{display:block;width:100%;text-align:left;background:var(--s-1);border:1.5px solid var(--s-line);border-radius:11px;padding:10px 13px;color:var(--s-fg);margin-bottom:7px;line-height:1.35}
+.opt:hover:not([disabled]){border-color:var(--c-cell)}
+.opt.ok{border-color:var(--c-ok);background:color-mix(in srgb,var(--c-ok) 15%,var(--s-1))}
+.opt.no{border-color:var(--c-bad);background:color-mix(in srgb,var(--c-bad) 15%,var(--s-1))}
+.q{background:var(--s-1);border:1px solid var(--s-line);border-radius:14px;padding:14px 16px}
+.q h4{font:600 17px/1.35 var(--font-b);margin:0 0 10px}
+.q .why{display:none;margin-top:4px;font-size:15px;color:var(--s-mute)}
+.q.done .why{display:block}
+.score{font:700 clamp(28px,5vw,44px)/1 var(--font-d)}
+.seg-seq{display:flex;gap:0;align-items:stretch;flex-wrap:wrap}
+.tlx{display:grid;grid-template-columns:90px repeat(3,minmax(0,1fr));gap:8px;align-items:stretch}
+.tlx>div{background:var(--s-1);border:1px solid var(--s-line);border-radius:10px;padding:9px 11px;font-size:14px;min-width:0}
+.tlx .hd{background:transparent;border-color:transparent;font:600 12px var(--font-m);letter-spacing:.08em;text-transform:uppercase;color:var(--s-mute);padding:4px 2px;display:flex;align-items:center}
+.tlx .em{opacity:.55;border-style:dashed;color:var(--s-mute)}
+@media (max-width:640px){.tlx{grid-template-columns:70px repeat(3,minmax(0,1fr));gap:5px}.tlx>div{padding:7px 7px;font-size:12.5px}}
+.dose{display:grid;grid-template-columns:repeat(auto-fit,minmax(60px,1fr));gap:4px}
+.dose div{height:44px;border-radius:7px;background:var(--s-2);display:grid;place-items:center;font:600 12px var(--font-m);color:var(--s-mute)}
+.dose div.a{background:color-mix(in srgb,var(--c-nnrti) 30%,var(--s-2));color:var(--s-fg)}
+.dose div.b{background:color-mix(in srgb,var(--c-ok) 30%,var(--s-2));color:var(--s-fg)}
+.wk{display:flex;gap:4px;align-items:stretch}
+.wk div{flex:1 1 0;min-width:0;text-align:center;padding:8px 2px;border-radius:8px;background:var(--s-2);font:600 12px var(--font-m);color:var(--s-mute)}
+.wk div.rash{background:color-mix(in srgb,var(--c-warn) 35%,var(--s-2));color:var(--s-fg)}
+.wk div.dan{background:color-mix(in srgb,var(--c-bad) 38%,var(--s-2));color:var(--s-fg)}
+.ladder{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.ladder>.panel{flex:1 1 180px}
+.ladder .ar{align-self:center;color:var(--s-mute);font-size:22px}
+.tbx{width:100%;border-collapse:collapse;font-size:14.5px}
+.tbx th,.tbx td{padding:8px 10px;border-bottom:1px solid var(--s-line);text-align:left;vertical-align:top}
+.tbx th{font:600 11.5px var(--font-m);letter-spacing:.08em;text-transform:uppercase;color:var(--s-mute)}
+.scrollx{overflow-x:auto}
+.clockwrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.pill{display:inline-flex;gap:6px;align-items:center;border-radius:999px;background:var(--s-2);padding:5px 12px;font-size:14px}
+.rowsel{display:flex;gap:6px;flex-wrap:wrap}
+.rowsel .opt{width:auto;margin:0;padding:8px 12px;font-size:14.5px}
+.res{border-radius:12px;padding:12px 14px;border:1.5px solid var(--c-cell);background:color-mix(in srgb,var(--c-cell) 11%,transparent)}
+.res.go{border-color:var(--c-ok);background:color-mix(in srgb,var(--c-ok) 12%,transparent)}
+.res.maybe{border-color:var(--c-warn);background:color-mix(in srgb,var(--c-warn) 12%,transparent)}
+.res.stop{border-color:var(--c-bad);background:color-mix(in srgb,var(--c-bad) 12%,transparent)}
+.res b{display:block;font-size:17px;margin-bottom:2px}
+.tbx{min-width:460px}
+.chart .lbl.short{display:none}
+@media (max-width:640px){
+  .chart text{font-size:21px!important}
+  .chart .lbl.long{display:none}.chart .lbl.short{display:block;font-size:23px!important}
+  .lc-mk circle{r:21px}.lc-mk text{font-size:25px}.lc-ring{stroke-width:7;r:29px}
+  .lcsvg text{font-size:21px}
+}
+@media (prefers-reduced-motion:reduce){
+  .scene .on[data-s],.scene .on[data-at],.pk-d.act{animation:none}
+  .lc-virus,.lc-core,.lc-env,.lc-dna,.lc-int,.lc-parts,.lc-bud,.lc-mature,.lc-hit,.bar i{transition:none!important}
+}
+</style>
+</head><body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg class="ribbon" viewBox="0 0 26 34" aria-hidden="true"><path fill="var(--accent)" fill-rule="evenodd" d="M13 1.5c-5.2 0-8.500 3.700-8.500 8 0 4.200 3.300 7 5.800 10.200L5 32l5.800-2 2.200-5.500 2.200 5.500 5.800 2-5.300-12.300c2.500-3.200 5.800-6 5.800-10.200 0-4.300-3.300-8-8.500-8zm0 5c2.200 0 3.400 1.600 3.400 3.200 0 2-1.700 3.700-3.400 5.800-1.700-2.100-3.400-3.800-3.400-5.800 0-1.600 1.200-3.200 3.400-3.200z"/></svg>
+      <div>
+        <h1>HIV, AIDS &amp; Management</h1>
+        <p>An interactive lesson built from your notes</p>
+      </div>
+    </div>
+    <div class="resume" id="resume"></div>
+  </header>
+
+  <section class="player" id="player" aria-label="Lesson player">
+    <div class="stagewrap">
+      <div class="stage" id="stage" aria-live="off"></div>
+      <div class="cover" id="cover">
+        <div class="cover-in">
+          <span class="kick" style="color:var(--c-virus)">Lesson from your notes</span>
+          <h2>HIV infection, AIDS and management</h2>
+          <p>A narrated walk through every section of the notes, with animated diagrams, tap-to-explore tables and short quizzes. Pause, rewind or jump to any chapter whenever you like.</p>
+          <ul><li>Voice-over and captions</li><li>Spacebar plays and pauses</li><li>Arrow keys step through</li><li>4 quiz checkpoints</li></ul>
+          <div class="row">
+            <button class="btn" id="startBtn" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span id="startLbl">Play lesson</span></button>
+            <button class="btn ghost" id="restartBtn" type="button" hidden>Start from the beginning</button>
+          </div>
+          <p class="sm" id="voiceNote"></p>
+        </div>
+      </div>
+    </div>
+    <div class="dock" id="dock">
+      <div class="wait" id="wait" hidden><span id="waitTxt">Your turn.</span><button class="btn sm" id="contBtn" type="button">Continue</button></div>
+      <p class="cap" id="cap">Press play to begin.</p>
+      <div class="bar" aria-hidden="true"><i id="bar"></i></div>
+      <div class="tl" id="tl" role="group" aria-label="Chapters timeline"></div>
+      <div class="ctrls">
+        <div class="cl">
+          <button class="ib" id="bChP" type="button" aria-label="Previous chapter" title="Previous chapter"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM20 6v12L9.500 12z"/></svg></button>
+          <button class="ib" id="bBeP" type="button" aria-label="Back one step" title="Back one step (Left arrow)"><svg viewBox="0 0 24 24"><path d="M11 18V6l-8.500 6zM21.500 18V6L13 12z"/></svg></button>
+          <button class="ib play" id="bPlay" type="button" aria-label="Play" title="Play / pause (Space)"><svg viewBox="0 0 24 24" id="icPlay"><path d="M8 5v14l11-7z"/></svg></button>
+          <button class="ib" id="bBeN" type="button" aria-label="Forward one step" title="Forward one step (Right arrow)"><svg viewBox="0 0 24 24"><path d="M13 6v12l8.500-6zM2.500 6v12L11 12z"/></svg></button>
+          <button class="ib" id="bChN" type="button" aria-label="Next chapter" title="Next chapter"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM4 6l10.500 6L4 18z"/></svg></button>
+        </div>
+        <span class="time" id="time">0:00 / 0:00</span>
+        <span class="sp"></span>
+        <select class="sel" id="selRate" aria-label="Speed"><option value="0.85">0.85x</option><option value="1" selected>1x</option><option value="1.15">1.15x</option><option value="1.3">1.3x</option><option value="1.5">1.5x</option></select>
+        <select class="sel" id="selVoice" aria-label="Voice" hidden></select>
+        <button class="ib" id="bSnd" type="button" aria-label="Voice-over on" title="Voice-over on/off"><svg viewBox="0 0 24 24" id="icSnd"></svg></button>
+        <button class="ib cc on" id="bCC" type="button" aria-label="Captions" title="Captions on/off">CC</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="below" aria-label="More">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="t-ch" aria-selected="true" aria-controls="p-ch" type="button">Chapters</button>
+      <button class="tab" role="tab" id="t-tr" aria-selected="false" aria-controls="p-tr" type="button">Transcript</button>
+      <button class="tab" role="tab" id="t-cd" aria-selected="false" aria-controls="p-cd" type="button">Drug codes</button>
+    </div>
+    <div class="tp" id="p-ch" role="tabpanel" aria-labelledby="t-ch"><div class="chgrid" id="chgrid"></div></div>
+    <div class="tp tr" id="p-tr" role="tabpanel" aria-labelledby="t-tr" hidden></div>
+    <div class="tp" id="p-cd" role="tabpanel" aria-labelledby="t-cd" hidden><div class="tblwrap"><table class="codes"><thead><tr><th>Code</th><th>Meaning</th><th>Class</th></tr></thead><tbody id="codesBody"></tbody></table></div></div>
+    <p class="foot">Study aid based on your uploaded notes (HIV infection, AIDS and management, with Zambia 2014 regimen tables). It is not clinical advice. For real patients, use the current national guideline and ask a qualified clinician or pharmacist.</p>
+  </section>
+</div>
+<script>
+/* ===== helpers ===== */
+const CLS={TDF:'nrti',ABC:'nrti',AZT:'nrti',d4T:'nrti',ddI:'nrti',XTC:'nrti','3TC':'nrti',FTC:'nrti',EFV:'nnrti',EFZ:'nnrti',NVP:'nnrti','NVP†':'nnrti',ETR:'nnrti','LPV-r':'pi','ATV-r':'pi','ATZ-r':'pi','DRV-r':'pi',RAL:'ii',MVC:'entry',ENF:'entry'};
+const D=c=>`<span class="chip c-${CLS[c]||'x'}">${c}</span>`;
+const R=s=>`<span class="reg">${s.split(' + ').map(D).join('<i>+</i>')}</span>`;
+const B=(say,o)=>Object.assign({say},o||{});
+const li=(arr,cls)=>`<ul class="list ${cls||''}">${arr.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+const pickList=(id,items)=>`<div class="pick" data-pick="${id}"><div class="pk-list">${items.map((it,i)=>`<button type="button" class="pk${i===0?' act':''}" data-i="${i}">${it.t}${it.sub?`<small>${it.sub}</small>`:''}</button>`).join('')}</div><div>${items.map((it,i)=>`<div class="pk-d${i===0?' act':''}" data-i="${i}"><h4>${it.h||it.t}</h4>${it.d}</div>`).join('')}</div></div>`;
+const kv=(k,v)=>`<div class="k">${k}</div>${v}`;
+
+window.CODES=[
+['TDF','Tenofovir','NRTI (nucleotide)'],['XTC','Guideline shorthand for 3TC or FTC (the "-cytabine" drugs)','NRTI'],['3TC','Lamivudine','NRTI'],['FTC','Emtricitabine','NRTI'],['ABC','Abacavir','NRTI'],['AZT','Zidovudine (the first anti-HIV drug)','NRTI'],['d4T','Stavudine','NRTI'],['ddI','Didanosine','NRTI'],
+['EFV / EFZ','Efavirenz','NNRTI'],['NVP','Nevirapine','NNRTI'],['ETR','Etravirine','NNRTI'],['sd-NVP','Single-dose nevirapine (given to mother and/or baby to prevent transmission)',''],
+['LPV-r','Lopinavir boosted with low-dose ritonavir','Protease inhibitor'],['ATV-r / ATZ-r','Atazanavir boosted with ritonavir','Protease inhibitor'],['DRV-r','Darunavir boosted with ritonavir','Protease inhibitor'],
+['RAL','Raltegravir','Integrase inhibitor'],['MVC','Maraviroc (CCR5 antagonist)','Entry inhibitor'],['ENF','Enfuvirtide (fusion inhibitor)','Entry inhibitor'],
+['cART / HAART','Combination (highly active) antiretroviral therapy','Treatment'],['ARV','Antiretroviral drug',''],['ATT','Anti-TB treatment',''],['RHZ','Rifampicin, isoniazid, pyrazinamide (TB drugs)',''],['CAT I / CAT II','TB treatment categories (new cases / retreatment cases)',''],
+['PEP','Post-exposure prophylaxis',''],['PMTCT','Prevention of mother-to-child transmission',''],['IRIS','Immune reconstitution inflammatory syndrome',''],['OI','Opportunistic infection',''],['CrCl','Creatinine clearance (kidney function)',''],['BD','Twice daily',''],['CD4','Receptor on T lymphocytes that HIV enters; the CD4 count shows how strong the immune system is','']
+];
+
+const CHAPTERS=[];
+
+/* ===== 0 Welcome ===== */
+CHAPTERS.push({id:'welcome',title:'Welcome and objectives',
+html:()=>`<div class="split">
+  <div style="display:flex;flex-direction:column;gap:10px">
+    ${[
+      'Understand HIV infection, its stages, early symptoms and the principles of treatment.',
+      'Discuss uses, drug action, adverse reactions, contraindications, precautions and interactions of antiretroviral drugs.',
+      'Discuss the pre-administration and ongoing assessments a Pharmacy Technologist should carry out for a patient on an antiretroviral drug.',
+      'List possible goals for a patient taking an antiretroviral drug.',
+      'Discuss how to promote the best response to therapy, manage adverse reactions, and educate the patient and family.'
+    ].map((t,i)=>`<div class="panel" data-s="${i+1}" data-f="${i+1}" style="display:flex;gap:12px;align-items:flex-start"><span class="num">${i+1}</span><span>${t}</span></div>`).join('')}
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="panel"><h3>How this lesson works</h3>${li(['Press play. The narrator reads each step, and captions show below.','Some steps pause for you to try something. Press continue when ready.','Click any chapter on the timeline to jump.','Quiz checkpoints test what you just watched.'])}</div>
+    <div class="note" data-s="6" data-f="6"><b>Guideline heads-up.</b> The regimens here come from the 2014 Zambian guidelines in your notes. Newer guidelines have since changed first-line drugs. Learn the notes for your course and check current guidelines for real patients.</div>
+  </div>
+</div>`,
+beats:[
+B('Welcome. This lesson walks through your notes on HIV infection, AIDS and management, one section at a time, and nothing is skipped. You can pause whenever you like, jump between chapters, and test yourself at the checkpoints.',{s:0}),
+B('By the end, you will understand HIV infection, its stages, early symptoms and the principles of treatment.',{s:1,f:1}),
+B('You will be able to discuss how antiretroviral drugs are used and how they act, plus their side effects, contraindications, precautions and interactions.',{s:2,f:2}),
+B('You will know the checks a pharmacy technologist should do before giving an antiretroviral drug, and the ongoing assessments afterwards.',{s:3,f:3}),
+B('You will be able to list possible goals for a patient taking an antiretroviral drug.',{s:4,f:4}),
+B('And you will discuss how to get the best response to treatment, how to manage side effects, and how to educate the patient and the family.',{s:5,f:5}),
+B('One heads-up before we start. The regimens in these notes come from the 2014 Zambian guidelines. Guidelines get updated, so for exams follow what your lecturer teaches, and for real patients always use the current national guideline. Let\'s begin.',{s:6,f:6})
+]});
+
+/* ===== 1 What is HIV ===== */
+const icon=(p)=>`<svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const ICO={
+ sex:icon('<circle cx="18" cy="24" r="12"/><circle cx="30" cy="24" r="12"/>'),
+ blood:icon('<path d="M24 5C24 5 11 21 11 31a13 13 0 0 0 26 0C37 21 24 5 24 5z"/><path d="M18 33a6 6 0 0 0 6 6"/>'),
+ needle:icon('<g transform="rotate(-45 24 24)"><rect x="12" y="19" width="20" height="10" rx="2"/><path d="M32 24h12M12 24H5M19 19v10M25 19v10"/></g>'),
+ vert:icon('<circle cx="24" cy="24" r="18"/><circle cx="24" cy="26" r="7"/><path d="M24 12v7" stroke-dasharray="2 3"/>')
+};
+CHAPTERS.push({id:'virus',title:'What is HIV?',
+html:()=>`<div class="split even">
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="panel" data-s="1" data-f="1"><h3>The name</h3><p class="big">HIV = Human Immunodeficiency Virus</p><p>The cause of <b>AIDS</b>, Acquired Immunodeficiency Syndrome.</p><p class="mute sm">Older names in the literature: HTLV-III and LAV.</p></div>
+    <div class="panel" data-s="2" data-f="2"><h3>What kind of virus?</h3><p class="big">A retrovirus</p><p>Its genes are stored as RNA. Inside a host cell the RNA is copied into DNA.</p><div class="arrowrow"><span class="chip c-virus lg">viral RNA</span><span class="ar">&rarr;</span><span class="chip c-cell lg">DNA</span><span class="mute sm">(this copying step matters for the drugs later)</span></div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="panel" data-s="3" data-f="3"><h3>How it is transmitted</h3>
+      <div class="grid g2" style="gap:10px">
+        ${[['sex','Sexual contact'],['blood','Blood and blood products'],['needle','Contaminated needles'],['vert','Vertical: mother to fetus']].map(([k,t])=>`<div style="display:flex;gap:10px;align-items:center;color:var(--c-virus)">${ICO[k]}<span style="color:var(--s-fg)">${t}</span></div>`).join('')}
+      </div></div>
+    <div class="grid g2" data-s="4" data-f="4">
+      <div class="panel"><h3>HIV-1</h3><p class="big">Most common</p><p>Occurs worldwide.</p></div>
+      <div class="panel"><h3>HIV-2</h3><p class="big">Mainly West Africa</p><p>Slower progression to AIDS than HIV-1.</p></div>
+    </div>
+  </div>
+</div>`,
+beats:[
+B('HIV is the human immunodeficiency virus, and it is the cause of AIDS, the acquired immunodeficiency syndrome. In older literature you may also see it called HTLV-III or LAV.',{s:1,f:1}),
+B('HIV is a retrovirus. Remember that word, because it explains how many of the drugs work. A retrovirus keeps its genes as RNA, and inside a host cell that RNA has to be copied into DNA.',{s:2,f:2}),
+B('The virus spreads in four ways. Sexual contact. Blood and blood products. Contaminated needles. And vertically, which means from mother to fetus.',{s:3,f:3}),
+B('There are two subtypes. HIV-1 is the common one and occurs worldwide. HIV-2 is found mainly in West Africa, and it is linked to a slower progression to AIDS. Keep HIV-2 in mind, because some drug classes do not work against it.',{s:4,f:4})
+]});
+
+/* ===== 2 Life cycle ===== */
+function lcSVG(drugs){
+  const mk=(n,x,y)=>`<g class="lc-mk" data-s="${n}" data-f="${n}"><circle cx="${x}" cy="${y}" r="15"/><text x="${x}" y="${y+1}" text-anchor="middle" dominant-baseline="central">${n}</text></g>`;
+  const ring=(s,x,y,col,r)=>drugs?`<circle class="lc-ring" data-s="${s}" cx="${x}" cy="${y}" r="${r||23}" stroke="var(--c-${col})"/>`:'';
+  const spikes=[-70,-40,0,40,70,110,150,190,230,290].map(a=>{const r=Math.PI*a/180,L=(a===-40||a===0||a===40)?55:50;return `<line x1="${(42*Math.cos(r)).toFixed(1)}" y1="${(42*Math.sin(r)).toFixed(1)}" x2="${(L*Math.cos(r)).toFixed(1)}" y2="${(L*Math.sin(r)).toFixed(1)}" stroke="var(--c-virus)" stroke-width="3.5" stroke-linecap="round"/><circle cx="${((L+3)*Math.cos(r)).toFixed(1)}" cy="${((L+3)*Math.sin(r)).toFixed(1)}" r="3.6" fill="var(--c-virus)"/>`}).join('');
+  return `<svg class="lcsvg" viewBox="0 0 800 400" role="img" aria-label="Diagram of HIV entering a CD4 T cell, copying itself and budding out">
+  <circle cx="520" cy="210" r="170" fill="rgba(51,196,190,.13)" stroke="var(--c-cell)" stroke-width="3"/>
+  <text x="520" y="70" text-anchor="middle" fill="var(--c-cell)" font-size="17">CD4 T CELL</text>
+  <circle cx="565" cy="212" r="72" fill="rgba(51,196,190,.12)" stroke="var(--c-cell)" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="565" y="305" text-anchor="middle" fill="#9FB4CB" font-size="14">NUCLEUS</text>
+  <g fill="none" stroke="#CFE3F3" stroke-width="3.5" stroke-linecap="round"><path d="M515 215q17-26 34 0"/><path d="M549 215q17 26 34 0"/><path d="M583 215q17-26 34 0"/></g>
+  <path class="lc-int" d="M549 215q17 26 34 0" fill="none" stroke="var(--c-virus)" stroke-width="7" stroke-linecap="round"/>
+  <g stroke="var(--c-cell)" stroke-width="3" fill="var(--c-cell)"><line x1="355" y1="170" x2="338" y2="170"/><circle cx="333" cy="170" r="6"/><line x1="355" y1="250" x2="338" y2="250"/><circle cx="333" cy="250" r="6"/></g>
+  <g stroke="var(--c-warn)" stroke-width="3" fill="var(--c-warn)"><line x1="351" y1="210" x2="342" y2="210"/><rect x="331" y="203" width="12" height="14" rx="3"/></g>
+  <g class="lc-virus"><circle r="42" fill="rgba(255,92,97,.22)" stroke="var(--c-virus)" stroke-width="3.5"/>${spikes}<text y="78" text-anchor="middle" fill="var(--c-virus)" font-size="16">HIV</text></g>
+  <g class="lc-core"><circle r="23" fill="#1B2D49" stroke="#FF9A9D" stroke-width="2.5"/><path class="lc-rna-in" d="M-14 0q3.5-9 7 0t7 0t7 0t7 0" fill="none" stroke="var(--c-virus)" stroke-width="3.5" stroke-linecap="round"/></g>
+  <g class="lc-dna" fill="none" stroke-linecap="round" stroke-width="3.5"><path d="M-26 -6q6.5-12 13 0t13 0t13 0t13 0" stroke="#CFE3F3"/><path d="M-26 6q6.5 12 13 0t13 0t13 0t13 0" stroke="#CFE3F3"/><circle cx="-34" cy="0" r="7" fill="var(--c-nrti)" stroke="none"/></g>
+  <g class="lc-parts" fill="none" stroke-linecap="round" stroke-width="3.5"><g transform="translate(470 318)"><path d="M-34 0q4-9 8 0t8 0t8 0t8 0" stroke="var(--c-virus)"/><path d="M-34 15q4-9 8 0t8 0t8 0t8 0" stroke="var(--c-virus)"/><g fill="#FFB2D5" stroke="none"><circle cx="-30" cy="-16" r="4.5"/><circle cx="-18" cy="-16" r="4.5"/><circle cx="-6" cy="-16" r="4.5"/><circle cx="6" cy="-16" r="4.5"/><circle cx="18" cy="-16" r="4.5"/></g></g></g>
+  <g class="lc-bud"><circle cx="708" cy="190" r="19" fill="none" stroke="var(--c-virus)" stroke-width="3" stroke-dasharray="5 4"/><circle cx="702" cy="262" r="19" fill="none" stroke="var(--c-virus)" stroke-width="3" stroke-dasharray="5 4"/></g>
+  <g class="lc-mature"><circle cx="708" cy="190" r="19" fill="rgba(255,92,97,.3)" stroke="var(--c-virus)" stroke-width="3.5"/><circle cx="708" cy="190" r="8" fill="#1B2D49" stroke="#FF9A9D" stroke-width="2"/><circle cx="702" cy="262" r="19" fill="rgba(255,92,97,.3)" stroke="var(--c-virus)" stroke-width="3.5"/><circle cx="702" cy="262" r="8" fill="#1B2D49" stroke="#FF9A9D" stroke-width="2"/></g>
+  ${ring(1,300,128,'entry')}${ring(2,425,150,'entry')}${ring(3,388,300,'nrti')}${ring(3.5,388,300,'nnrti',30)}${ring(4,560,108,'ii')}${ring(7,752,300,'pi')}
+  ${mk(1,300,128)}${mk(2,425,150)}${mk(3,388,300)}${mk(4,560,108)}${mk(5,560,352)}${mk(6,752,130)}${mk(7,752,300)}
+  </svg>
+  <div class="legend sm mute" style="margin-top:8px"><span><svg width="16" height="12" viewBox="0 0 16 12" aria-hidden="true"><circle cx="9" cy="6" r="5" fill="var(--c-cell)"/><line x1="0" y1="6" x2="5" y2="6" stroke="var(--c-cell)" stroke-width="2"/></svg> CD4 receptor</span><span><svg width="16" height="12" viewBox="0 0 16 12" aria-hidden="true"><rect x="5" y="0" width="10" height="12" rx="3" fill="var(--c-warn)"/></svg> CCR5 or CXCR4 co-receptor</span><span style="color:var(--c-virus)">&#9679; HIV (red)</span></div>`;
+}
+const STEPS=[
+ ['Attach','Spikes grab CD4, then CCR5 or CXCR4'],
+ ['Fuse','Virus merges with the cell membrane and releases its contents'],
+ ['Reverse transcribe','Viral RNA is copied into DNA'],
+ ['Integrate','Viral DNA is inserted into the cell\'s own genome'],
+ ['Copy','The cell reads the viral genes and builds viral parts'],
+ ['Assemble and bud','New virus particles form and leave the cell'],
+ ['Mature','Protease cuts long proteins so the particle can infect']
+];
+CHAPTERS.push({id:'infect',title:'How HIV enters and copies itself',
+html:()=>`<div class="split"><div>${lcSVG(false)}</div>
+  <div class="lcsteps" style="grid-template-columns:1fr">${STEPS.map((s,i)=>`<button type="button" class="lcs" data-s="${i+1}" data-f="${i+1}" data-jump="${i+1}"><span class="num">${i+1}</span><span><b>${s[0]}</b>${s[1]}</span></button>`).join('')}</div></div>`,
+beats:[
+B('HIV targets the cells that run your immune system. These are T lymphocytes that carry a receptor called CD4, and also monocytes and macrophages. Here is a CD4 T cell, and here comes the virus.',{s:0}),
+B('Step one is attachment. The virus uses the CD4 receptor as a handle, and then a second co-receptor, either CCR5 or CXCR4, to lock on. This is how it gets into the cell.',{s:1,f:1}),
+B('Step two is fusion. The virus merges with the cell membrane and releases its contents inside the cell.',{s:2,f:2}),
+B('Step three is reverse transcription. An enzyme called reverse transcriptase copies the viral RNA into DNA. Normal cells go from DNA to RNA, so this is the retrovirus running the process in reverse.',{s:3,f:3}),
+B('Step four is integration. The new viral DNA travels into the nucleus, and an enzyme called integrase inserts it into the cell\'s own genome. From here on, the cell itself carries the instructions for making HIV.',{s:4,f:4}),
+B('Step five is copying. The cell reads those instructions and builds new viral parts.',{s:5,f:5}),
+B('Step six is assembly. The parts come together at the cell surface and bud off as new virus particles, still immature.',{s:6,f:6}),
+B('Step seven is maturation. An enzyme called protease cuts the long viral proteins into working pieces, and that makes each new particle infectious.',{s:7,f:7}),
+B('All of this replication switches on the immune system, and it causes a progressive loss of CD4 positive T lymphocytes. That loss is what leads to immune deficiency. Keep this picture in mind, because every class of antiretroviral drug blocks one of these steps.',{s:7,f:null}),
+B('Your turn. Tap any step in the list to replay it and make sure you can say what happens there. Press continue when you are ready.',{s:7,f:null,wait:true,prompt:'Tap a step to replay it, then press continue.'})
+]});
+
+/* ===== 3 Stages ===== */
+function smooth(pts){let d=`M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;for(let i=0;i<pts.length-1;i++){const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2;d+=` C${(p1[0]+(p2[0]-p0[0])/6).toFixed(1)},${(p1[1]+(p2[1]-p0[1])/6).toFixed(1)} ${(p2[0]-(p3[0]-p1[0])/6).toFixed(1)},${(p2[1]-(p3[1]-p1[1])/6).toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`}return d}
+const CD4PTS=[[0,1000],[42,640],[90,860],[250,790],[420,560],[510,340],[565,200],[620,120],[670,60],[700,30]];
+const X0=74,cy=c=>280-c*0.2,vy=l=>280-(l-2)*48;
+function cd4Chart(){
+  const cd=CD4PTS.map(p=>[X0+p[0],cy(p[1])]);
+  const vl=[[0,3.0],[34,6.7],[60,5.9],[95,4.5],[250,4.3],[420,4.7],[510,5.1],[565,5.7],[630,6.3],[700,6.6]].map(p=>[X0+p[0],vy(p[1])]);
+  const bands=[[0,90,'Primary','#FFC15C',1],[90,420,'Chronic, few symptoms','#33C4BE',2],[420,565,'Symptoms','#A98BFF',3],[565,700,'AIDS','#FF5C61',4]];
+  return `<svg class="chart" id="cd4svg" viewBox="0 0 800 330" role="img" aria-label="Schematic chart of CD4 count falling and viral load rising across the stages of untreated HIV infection">
+  ${bands.map(b=>`<g class="band" data-f="${b[4]}"><rect x="${X0+b[0]}" y="36" width="${b[1]-b[0]}" height="244" fill="${b[3]}"/></g>`).join('')}
+  ${bands.map(b=>`<text class="lbl long" x="${X0+(b[0]+b[1])/2}" y="26" text-anchor="middle" style="font-size:16px">${b[2]}</text><text class="lbl short" x="${X0+(b[0]+b[1])/2}" y="26" text-anchor="middle">${b[2].split(',')[0]}</text>`).join('')}
+  ${[0,400,800,1200].map(v=>`<line x1="${X0}" x2="${X0+700}" y1="${cy(v)}" y2="${cy(v)}" stroke="#2B4566" stroke-width="1"/><text x="${X0-8}" y="${cy(v)+5}" text-anchor="end" style="font-size:15px">${v}</text>`).join('')}
+  <line x1="${X0}" x2="${X0+700}" y1="${cy(200)}" y2="${cy(200)}" stroke="var(--c-bad)" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="${X0+8}" y="${cy(200)-7}" style="font-size:15px;fill:var(--c-bad)">200 cells/&micro;L</text>
+  <path d="${smooth(vl)}" fill="none" stroke="var(--c-virus)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="${smooth(cd)}" fill="none" stroke="var(--c-cell)" stroke-width="4.5" stroke-linecap="round"/>
+  <g id="cdmark" style="display:none"><line id="cdl" y1="36" y2="280" stroke="#fff" stroke-width="1.5" stroke-dasharray="4 4"/><circle id="cdc" r="9" fill="var(--c-cell)" stroke="#fff" stroke-width="3"/></g>
+  <text x="${X0+350}" y="318" text-anchor="middle" style="font-size:15px">Time since infection (schematic, not to scale)</text>
+  <text x="14" y="160" transform="rotate(-90 14 160)" text-anchor="middle" style="font-size:15px">CD4 cells/&micro;L</text>
+  </svg>
+  <div class="legend sm mute"><span style="color:var(--c-cell)">&#9632; CD4 count</span><span style="color:var(--c-virus)">&#9632; Viral load (rises as CD4 falls)</span><span>Illustration only</span></div>`;
+}
+CHAPTERS.push({id:'stages',title:'Stages of infection and AIDS',
+html:()=>`${cd4Chart()}
+ <div>
+  <div class="panel" data-at="1"><h3>Stage 1: Primary HIV infection</h3><p>The body makes HIV antibodies that do not neutralise the virus. This is <b>seroconversion</b>.</p><p>Some people get a short <b>seroconversion illness</b>: a transient rash, sore throat and swollen lymph nodes (lymphadenopathy).</p></div>
+  <div class="panel" data-at="2"><h3>Stage 2: Chronic infection without symptoms</h3><p>A largely asymptomatic phase follows.</p><p>The only sign may be <b>persistent generalised lymphadenopathy</b>: swollen glands that stay swollen.</p></div>
+  <div class="panel" data-at="3"><h3>Stage 3: Chronic infection with symptoms</h3><p>CD4+ T lymphocytes fall gradually, so immunodeficiency gets worse.</p>${li(['Fatigue','Weight loss','Recurrent fever','Diarrhoea','Thrush'])}</div>
+  <div class="panel" data-at="4"><h3>Stage 4: AIDS-defining illnesses</h3>
+    <div class="grid g2"><div><div class="k">Opportunistic infections</div>${li(['Pneumocystis pneumonia','Toxoplasma encephalitis','Oesophageal candidiasis','Cryptococcal meningitis','CMV retinitis','Mycobacterium avium complex','Recurrent bacterial pneumonia','Tuberculosis, pulmonary or extrapulmonary'],'bad')}</div>
+    <div><div class="k">Neoplasms (cancers)</div>${li(['Kaposi\'s sarcoma','Cervical carcinoma','Lymphomas'],'bad')}</div></div></div>
+  <div class="panel" data-at="5"><h3>Try it: the 200 threshold</h3>
+    <div class="readout" id="cdval">450<small>CD4 cells/&micro;L</small></div>
+    <input class="rng" id="cdrng" type="range" min="0" max="1000" step="10" value="450" aria-label="CD4 count in cells per microlitre">
+    <div class="status" id="cdstat"></div></div>
+  <div class="panel" data-at="6"><h3>The key message</h3><p class="big">Treat before CD4 falls below 200.</p><p>Most AIDS-defining events can be prevented if effective HIV treatment starts before the CD4+ count reaches that level.</p><p class="mute">Since HAART became available, AIDS-defining illnesses have declined markedly.</p></div>
+  <div class="panel" data-at="7"><h3>There is no cure</h3><div class="grid g2"><div class="status"><b>On HAART</b>Plasma viral load held at undetectable levels in most patients.</div><div class="status danger"><b>Treatment stopped</b>Viral replication rapidly returns to pre-treatment levels.</div></div><p class="mute" style="margin-top:8px">Drugs slow or halt progression. They do not remove the virus.</p></div>
+  <div class="panel" data-at="8"><h3>What to remember about ARVs</h3>${li(['They can cause serious side effects.','They raise life expectancy considerably and cut the risk of complications linked to premature ageing.','Illness and death are still slightly higher than in people without HIV.','Treatment should be handled only by people experienced in using these drugs.'])}</div>
+ </div>`,
+mount:(sc)=>{
+  const rng=sc.querySelector('#cdrng'),val=sc.querySelector('#cdval'),stat=sc.querySelector('#cdstat'),mark=sc.querySelector('#cdmark'),l=sc.querySelector('#cdl'),c=sc.querySelector('#cdc');
+  function xFor(v){for(let i=CD4PTS.length-1;i>0;i--){const a=CD4PTS[i-1],b=CD4PTS[i];if(Math.min(a[1],b[1])<=v&&v<=Math.max(a[1],b[1])){const t=(v-a[1])/(b[1]-a[1]||1);return a[0]+t*(b[0]-a[0])}}return v>CD4PTS[0][1]?0:700}
+  function upd(){
+    const v=+rng.value;val.innerHTML=v+'<small>CD4 cells/&micro;L</small>';
+    const x=X0+xFor(v);mark.style.display='';l.setAttribute('x1',x);l.setAttribute('x2',x);c.setAttribute('cx',x);c.setAttribute('cy',cy(v));
+    if(v<200){stat.className='status danger';stat.innerHTML='<b>Below 200: severe immunodeficiency</b>AIDS-defining illnesses can now occur. (The notes also give "less than 14% of total lymphocytes" as the equivalent cut-off.)'}
+    else{stat.className='status';stat.innerHTML='<b>200 or above</b>AIDS-defining illnesses generally do not occur yet. Effective treatment started before the count reaches 200 prevents most of them.'}
+  }
+  rng.addEventListener('input',upd);upd();
+},
+beats:[
+B('HIV infection moves through stages. This chart is a simple, not to scale picture of an untreated infection. The teal line is the CD4 count and the red line is the viral load.',{s:0}),
+B('First comes primary HIV infection. The body makes HIV antibodies, which is called seroconversion, but these antibodies do not neutralise the virus. Some people get a short seroconversion illness, with a transient rash, a sore throat and swollen lymph nodes.',{f:1,a:1}),
+B('Next is a long chronic phase that is largely without symptoms. The one sign you might see is persistent generalised lymphadenopathy, meaning swollen glands that do not go away.',{f:2,a:2}),
+B('During chronic infection the CD4 T cells fall gradually, so immunodeficiency gets progressively worse. Eventually symptoms appear: fatigue, weight loss, recurrent fever, diarrhoea or thrush.',{f:3,a:3}),
+B('Or the person may develop severe opportunistic infections, which are infections that take advantage of a weak immune system. Your notes list pneumocystis pneumonia, toxoplasma encephalitis, oesophageal candidiasis, cryptococcal meningitis, CMV retinitis, Mycobacterium avium complex, recurrent bacterial pneumonia, and tuberculosis in or outside the lungs. There are also cancers: Kaposi\'s sarcoma, cervical carcinoma and lymphomas. Together, these are called AIDS-defining illnesses.',{f:4,a:4}),
+B('These illnesses generally do not occur until immunodeficiency is severe. That means a CD4 count below 200 cells per microlitre, or below 14 percent of the total lymphocyte count.',{f:4,a:5}),
+B('Try it yourself. Drag the slider to change the CD4 count and watch the marker move along the curve. Press continue when you are ready.',{f:4,a:5,wait:true,prompt:'Drag the CD4 slider, then press continue.'}),
+B('So here is the key message. Most AIDS-defining events can be prevented if effective treatment starts before the CD4 count falls to that level. Since highly active antiretroviral therapy, or HAART, became available, these illnesses have declined markedly.',{f:null,a:6}),
+B('However, there is no cure. A number of drugs slow or halt disease progression, and HAART keeps the viral load undetectable in most patients. But when treatment is stopped, viral replication rapidly returns to the pre-treatment level.',{f:null,a:7}),
+B('Antiretrovirals can cause serious side effects. They increase life expectancy considerably and reduce the risk of complications linked to premature ageing, but illness and death are still slightly higher than in people without HIV. And treatment should be undertaken only by people experienced in using these drugs.',{f:null,a:8})
+]});
+
+/* ===== quiz helper ===== */
+function quizChapter(id,title,questions,intro,final){
+  return {id,quiz:true,title,extraMs:questions.length*30000,
+  html:()=>`<div class="qs" style="display:flex;flex-direction:column;gap:12px"></div><div class="qres"></div>`,
+  mount:(sc,api)=>{
+    const wrap=sc.querySelector('.qs'),res=sc.querySelector('.qres');let answered=0,score=0;
+    const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+    questions.forEach((q,qi)=>{
+      const opts=shuffle(q.o.map((t,i)=>({t,ok:i===0})));
+      const el=document.createElement('div');el.className='q';
+      el.innerHTML=`<h4>${qi+1}. ${q.q}</h4>${opts.map((o,i)=>`<button type="button" class="opt" data-ok="${o.ok?1:0}">${o.t}</button>`).join('')}<div class="why"><b></b> ${q.why}</div>`;
+      el.addEventListener('click',e=>{
+        const b=e.target.closest('.opt');if(!b||el.classList.contains('done'))return;
+        el.classList.add('done');answered++;
+        const ok=b.dataset.ok==='1';if(ok)score++;
+        el.querySelectorAll('.opt').forEach(x=>{x.disabled=true;if(x.dataset.ok==='1')x.classList.add('ok')});
+        if(!ok)b.classList.add('no');
+        el.querySelector('.why b').textContent=ok?'Correct.':'Not quite.';
+        if(answered===questions.length)finish();
+      });
+      wrap.appendChild(el);
+    });
+    function finish(){
+      api.record(id,score,questions.length);
+      const missed=[...new Set(questions.filter((q,i)=>{const d=wrap.children[i];return !d.querySelector('.opt.no')?false:true}).map(q=>q.ch))];
+      const L=window.__lesson;
+      const links=missed.map(cid=>{const idx=L.CH.findIndex(c=>c.id===cid);return `<button type="button" class="btn ghost sm" data-go="${idx}">Review: ${L.CH[idx].title}</button>`}).join(' ');
+      res.innerHTML=`<div class="panel" style="display:flex;flex-direction:column;gap:12px"><div class="score">${score} / ${questions.length}</div><p style="margin:0">${score===questions.length?'Perfect. You are ready for the next part.':score>=questions.length*0.6?'Good work. Review anything you missed, or carry on.':'Worth another look at the chapters below before moving on.'}</p>${links?`<div style="display:flex;gap:8px;flex-wrap:wrap">${links}</div>`:''}<div>${final?`<button type="button" class="btn sm" data-restart="1">Watch the lesson again</button>`:`<button type="button" class="btn sm" data-next="1">Continue lesson</button>`}</div></div>`;
+      res.scrollIntoView({block:'nearest',behavior:'smooth'});
+    }
+    res.addEventListener('click',e=>{
+      const g=e.target.closest('[data-go]');if(g){window.__lesson.go(+g.dataset.go,0,true);return}
+      if(e.target.closest('[data-next]'))api.next();
+      if(e.target.closest('[data-restart]'))api.restart();
+    });
+  },
+  beats:[B(intro,{s:0,wait:true,prompt:'Answer the questions below, then continue.'})]};
+}
+
+CHAPTERS.push(quizChapter('q1','Checkpoint 1: the virus and its stages',[
+ {q:'HIV is best described as…',o:['A retrovirus whose RNA is copied into DNA inside the host cell','A bacterium that infects the lungs','A fungus that causes thrush','A DNA virus that never enters cells'],why:'HIV is a retrovirus. Its viral RNA is reverse transcribed into DNA and inserted into the host genome.',ch:'virus'},
+ {q:'Which receptor does HIV bind first on a T lymphocyte, before using CCR5 or CXCR4?',o:['CD4','CD8','CD20','CD34'],why:'HIV uses the CD4 receptor, plus the CCR5 or CXCR4 co-receptor, to enter T lymphocytes and monocytes/macrophages.',ch:'infect'},
+ {q:'Which statement about HIV-2 is true?',o:['It is found mainly in West Africa and progresses to AIDS more slowly than HIV-1','It is the most common type worldwide','It progresses faster than HIV-1','It is only found in children'],why:'HIV-1 is the common worldwide type. HIV-2 is mainly West African with slower progression.',ch:'virus'},
+ {q:'AIDS-defining illnesses generally do not occur until the CD4 count falls below…',o:['200 cells/µL (or under 14% of lymphocytes)','500 cells/µL','800 cells/µL','50 cells/µL'],why:'Severe immunodeficiency means CD4 under 200 cells per microlitre or under 14% of total lymphocytes.',ch:'stages'},
+ {q:'A transient rash, sore throat and swollen lymph nodes soon after infection is called…',o:['Seroconversion illness','An AIDS-defining illness','Immune reconstitution syndrome','Lipodystrophy'],why:'This short illness comes with primary infection, when HIV antibodies appear (seroconversion).',ch:'stages'},
+ {q:'What happens to the viral load if HAART is stopped?',o:['It rapidly returns to pre-treatment levels','It stays undetectable for life','It falls further','It only changes in children'],why:'There is no cure. Replication resumes quickly once treatment stops.',ch:'stages'}
+],'Checkpoint time. Answer these six questions about the virus and its stages. Take your time, and press continue when you are done.'));
+/* ===== 4 Drug classes ===== */
+const chipC=(c,t)=>`<span class="chip c-${c}">${t}</span>`;
+const DSTEPS=[
+ ['Attach',[chipC('entry','CCR5 antagonist')]],
+ ['Fuse',[chipC('entry','Fusion inhibitor')]],
+ ['Reverse transcribe',[chipC('nrti','NRTIs'),chipC('nnrti','NNRTIs')]],
+ ['Integrate',[chipC('ii','Integrase inhibitor')]],
+ ['Copy',[`<span class="mute sm">no class in your notes</span>`]],
+ ['Assemble and bud',[`<span class="mute sm">no class in your notes</span>`]],
+ ['Mature',[chipC('pi','Protease inhibitors')]]
+];
+CHAPTERS.push({id:'drugs',title:'The antiretroviral drug classes',
+html:()=>`<div class="split"><div>${lcSVG(true)}
+  <div class="lcsteps" style="margin-top:10px">${DSTEPS.map((s,i)=>`<button type="button" class="lcs" data-s="${i+1}" data-f="${i+1}" data-jump="${i+1}"><span class="num">${i+1}</span><span><b>${s[0]}</b><span class="chips">${s[1].join('')}</span></span></button>`).join('')}</div></div>
+  <div>
+   <div class="panel" data-at="1"><h3>Entry inhibitor</h3><p class="big">CCR5 antagonist</p><div class="regs">${D('MVC')}</div><p style="margin-top:8px"><b>Maraviroc</b> blocks the CCR5 co-receptor.</p><p class="mute">Licensed only for patients infected exclusively with CCR5-tropic HIV.</p></div>
+   <div class="panel" data-at="2"><h3>Entry inhibitor</h3><p class="big">Fusion inhibitor</p><div class="regs">${D('ENF')}</div><p style="margin-top:8px"><b>Enfuvirtide</b> stops HIV fusing with the host cell.</p><p class="mute">Licensed for infection that has failed other regimens. It must be combined with other potentially active antiretrovirals.</p></div>
+   <div class="panel" data-at="3"><h3>NRTIs</h3><p class="big">Nucleoside reverse transcriptase inhibitors</p><p class="mute sm">Also called nucleoside analogues.</p><div class="legend" style="gap:6px">${['AZT','ABC','ddI','XTC','3TC','d4T','TDF'].map(D).join('')}</div><p style="margin-top:8px"><b>Zidovudine</b> was the first anti-HIV drug ever introduced. Others: abacavir, didanosine, emtricitabine, lamivudine, stavudine, tenofovir.</p></div>
+   <div class="panel" data-at="4"><h3>NNRTIs</h3><p class="big">Non-nucleoside reverse transcriptase inhibitors</p><div class="legend" style="gap:6px">${['EFV','ETR','NVP'].map(D).join('')}</div>${li(['Active against HIV-1 but <b>not HIV-2</b>.','Interact with many drugs that are metabolised in the liver.','Etravirine is used with a boosted protease inhibitor when HIV is resistant to other NNRTIs and protease inhibitors.'],'')}</div>
+   <div class="panel" data-at="5"><h3>NNRTI side effects</h3>${li([`${D('NVP')} high incidence of rash, including Stevens-Johnson syndrome, and occasionally fatal hepatitis.`,`${D('EFV')} ${D('ETR')} rash too, but usually milder.`,`${D('EFV')} psychiatric or CNS disturbances are common. Often self-limiting. Take at bedtime, especially in the first 2 to 4 weeks.`,`${D('EFV')} can raise plasma cholesterol.`],'bad')}</div>
+   <div class="panel" data-at="6"><h3>Integrase inhibitor</h3><p class="big">Raltegravir</p><div class="regs">${D('RAL')}</div><p style="margin-top:8px">Blocks the integrase enzyme. Licensed in combination with other antiretrovirals.</p><p class="mute">Restricted use: when NNRTIs or protease inhibitors cannot be used because of intolerance, drug interactions or resistance.</p></div>
+   <div class="panel" data-at="7"><h3>Protease inhibitors (PIs)</h3><p class="big">Block the protease enzyme</p><div class="legend" style="gap:6px">${['ATV-r','LPV-r'].map(D).join('')}</div>${li(['Atazanavir','Darunavir','Fosamprenavir (a pro-drug of amprenavir)','Indinavir','Lopinavir','Nelfinavir','Ritonavir','Saquinavir','Tipranavir'])}</div>
+   <div class="panel" data-at="8"><h3>Ritonavir boosting</h3><p>A <b>low dose</b> of ritonavir keeps the blood levels of other PIs up for longer.</p>${li(['Boosts atazanavir, darunavir, fosamprenavir, indinavir, lopinavir, saquinavir and tipranavir.','At this low dose, ritonavir has <b>no antiviral activity</b> of its own.','Lopinavir with low-dose ritonavir comes as one combination: <b>LPV/r</b>.'])}</div>
+   <div class="panel" data-at="9"><h3>PIs, the liver and the metabolism</h3>${li(['Metabolised by cytochrome P450 enzymes, so they have a significant potential for drug interactions.','That is why most PIs are combined with low-dose ritonavir.','Associated with lipodystrophy and metabolic effects.'],'bad')}</div>
+   <div class="panel" data-at="10"><h3>All five classes</h3><div class="scrollx"><table class="tbx"><thead><tr><th>Step</th><th>Class</th><th>Drugs</th></tr></thead><tbody>
+     <tr><td>1 Attach</td><td>${chipC('entry','CCR5 antagonist')}</td><td>Maraviroc</td></tr>
+     <tr><td>2 Fuse</td><td>${chipC('entry','Fusion inhibitor')}</td><td>Enfuvirtide</td></tr>
+     <tr><td>3 Reverse transcribe</td><td>${chipC('nrti','NRTIs')}<br>${chipC('nnrti','NNRTIs')}</td><td>AZT, ABC, ddI, XTC, 3TC, d4T, TDF<br>EFV, ETR, NVP</td></tr>
+     <tr><td>4 Integrate</td><td>${chipC('ii','Integrase inhibitor')}</td><td>Raltegravir</td></tr>
+     <tr><td>7 Mature</td><td>${chipC('pi','Protease inhibitors')}</td><td>ATV, DRV, LPV, RTV, SQV, TPV and others</td></tr></tbody></table></div></div>
+  </div></div>`,
+beats:[
+B('Antiretroviral drugs are grouped into classes by the step of the life cycle they block. Let\'s walk the virus\'s journey again and see where each class acts.',{s:0}),
+B('At step one, attachment, the CCR5 antagonist maraviroc blocks the CCR5 co-receptor. It is licensed only for patients who are infected exclusively with CCR5-tropic HIV.',{s:1,f:1,a:1}),
+B('At step two, fusion, the fusion inhibitor enfuvirtide stops HIV from fusing with the host cell. It is licensed for infection that has failed to respond to other regimens, and it must be combined with other potentially active antiretroviral drugs.',{s:2,f:2,a:2}),
+B('Step three is reverse transcription, and two classes act here. First, the nucleoside reverse transcriptase inhibitors, also called nucleoside analogues. Zidovudine was the first anti-HIV drug ever introduced. Others are abacavir, didanosine, emtricitabine, lamivudine, stavudine and tenofovir.',{s:3,f:3,a:3}),
+B('The second class at step three is the non-nucleoside reverse transcriptase inhibitors: efavirenz, etravirine and nevirapine. They are active against HIV-1 but not HIV-2. They can interact with many drugs that are metabolised in the liver. Etravirine is used with a boosted protease inhibitor for HIV that is resistant to other NNRTIs and protease inhibitors.',{s:3.5,f:3,a:4}),
+B('Know the side effects of this class. Nevirapine has a high incidence of rash, including Stevens-Johnson syndrome, and occasionally fatal hepatitis. Rash also occurs with efavirenz and etravirine, but it is usually milder. Efavirenz commonly causes psychiatric or CNS disturbances. These are often self-limiting, and taking the dose at bedtime reduces them, especially in the first 2 to 4 weeks. Efavirenz can also raise plasma cholesterol.',{s:3.5,f:3,a:5}),
+B('Step four is integration, and the integrase inhibitor raltegravir blocks it. It is licensed in combination with other antiretrovirals, and it is accepted for restricted use when NNRTIs or protease inhibitors cannot be used because of intolerance, drug interactions or resistance.',{s:4,f:4,a:6}),
+B('The last class acts at maturation. Protease inhibitors block the protease enzyme, so new particles stay immature. Your notes list atazanavir, darunavir, fosamprenavir, which is a pro-drug of amprenavir, indinavir, lopinavir, nelfinavir, ritonavir, saquinavir and tipranavir.',{s:7,f:7,a:7}),
+B('Ritonavir has a special job. In a low dose, it boosts the activity of the other protease inhibitors by keeping their plasma levels up for longer. At that low dose, ritonavir has no antiviral activity of its own. Lopinavir with low-dose ritonavir is available as a single combination, which you will see written as LPV slash r.',{s:7,f:7,a:8}),
+B('Protease inhibitors are metabolised by cytochrome P450 enzymes, so they have a significant potential for drug interactions. That is the reason most of them are combined with low-dose ritonavir. They are also associated with lipodystrophy and metabolic effects, which we will cover later.',{s:7,f:7,a:9}),
+B('Here is the full map. Tap any step in the list to replay where it sits in the cell. Press continue when you are ready to move on.',{s:7,f:null,a:10,wait:true,prompt:'Tap a step to explore, then press continue.'})
+]});
+
+/* ===== 5 Principles and initiation ===== */
+CHAPTERS.push({id:'principles',title:'Principles of treatment and starting therapy',
+html:()=>`
+ <div data-at="1 2 3 4" class="grid g2">
+  <div class="panel" data-s="1" data-f="1"><h3>Principle 1: the aim</h3><p>Reduce the plasma viral load <b>as much as possible, for as long as possible</b>.</p><p class="mute">Start before the immune system is irreversibly damaged, but balance early treatment against the risk of toxicity.</p></div>
+  <div class="panel" data-s="2" data-f="2"><h3>Principle 2: adherence</h3><p><b>Commitment and strict adherence</b> are needed over many years.</p><p class="mute">So choose a regimen that is convenient and well tolerated.</p></div>
+  <div class="panel" data-s="3" data-f="3"><h3>Principle 3: combinations</h3><p>Combining drugs <b>reduces the development of resistance</b>.</p><p class="mute">The drugs should have synergistic or additive activity, while their toxicity must not be additive.</p></div>
+  <div class="panel" data-s="4" data-f="4"><h3>Principle 4: test first</h3><p>Establish <b>viral sensitivity</b> to antiretrovirals before starting, or before switching if the infection is not responding.</p></div>
+ </div>
+ <div data-at="5 6 7 8 9" class="grid g2" style="align-items:start">
+  <div class="panel" data-s="5" data-f="5"><h3>When to start</h3><p>Mainly depends on the <b>CD4 count</b>.</p><p class="mute">Viral load and clinical symptoms also help. Also consider the drugs' effects on factors such as cardiovascular risk.</p></div>
+  <div class="panel" data-s="6" data-f="6"><h3>What to start: HAART</h3><div class="arrowrow"><span class="chip lg c-nrti">NRTI</span><i style="font-style:normal">+</i><span class="chip lg c-nrti">NRTI</span><i style="font-style:normal">+</i><span class="chip lg c-nnrti">NNRTI</span><span class="or">and/or</span><span class="chip lg c-pi">PI</span></div><div class="k">Regimens of choice</div><div class="regs">${R('TDF + XTC + EFV')}<span class="or">or</span>${R('ABC + 3TC + EFV')}</div></div>
+  <div class="panel" data-s="7" data-f="7"><h3>Boosted PI regimens are reserved for</h3>${li(['Patients with resistance to first-line regimens','Women wishing to become pregnant','Patients with psychiatric illness'])}<div class="regs" style="margin-top:8px">${R('2 NRTIs + ATV-r')}</div></div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+   <div class="panel" data-s="8" data-f="8"><h3>HIV and chronic hepatitis B</h3><p>Treat with antivirals that are <b>active against both diseases</b>.</p></div>
+   <div class="panel" data-s="9" data-f="9"><h3>Switching therapy</h3><p>Deterioration (clinical or virological) may need a change.</p><p class="mute">The choice depends on response to previous treatment, tolerance and the possibility of cross resistance.</p></div>
+  </div>
+ </div>
+ <div data-at="10" class="panel"><h3>Try it: build a regimen</h3><p class="sm mute" style="margin-bottom:8px">Tap three drugs to build a regimen. Tap again to remove one.</p>
+  <div class="slots" id="slots"><div class="slot">1</div><div class="slot">2</div><div class="slot">3</div></div>
+  <div class="palette" style="margin:12px 0">${['TDF','XTC','ABC','3TC','AZT','EFV','NVP','LPV-r'].map(c=>`<button type="button" class="pal" data-c="${c}" style="background:none;border:0;padding:0">${D(c).replace('class="chip','class="chip lg')}</button>`).join('')}</div>
+  <div class="res" id="bres">Pick three drugs.</div><p class="sm mute" style="margin:8px 0 0">XTC is the guideline shorthand for 3TC or FTC.</p></div>`,
+mount:(sc)=>{
+  const sel=[],slots=sc.querySelector('#slots'),res=sc.querySelector('#bres');
+  const NR=['TDF','XTC','ABC','3TC','AZT'];
+  function draw(){
+    slots.innerHTML=[0,1,2].map(i=>sel[i]?`<div class="slot full">${D(sel[i])}</div>`:`<div class="slot">${i+1}</div>`).join('');
+    sc.querySelectorAll('.pal').forEach(p=>p.classList.toggle('sel',sel.includes(p.dataset.c)));
+    if(sel.length<3){res.className='res';res.innerHTML='Pick three drugs.';return}
+    const n=sel.filter(x=>NR.includes(x)).length,other=sel.filter(x=>!NR.includes(x));
+    const key=sel.slice().sort().join('+');
+    if(sel.includes('XTC')&&sel.includes('3TC')){res.className='res maybe';res.innerHTML='<b>Careful</b>XTC already stands for 3TC or FTC, so listing both doubles up the same kind of drug.';return}
+    if(n!==2||other.length!==1){res.className='res stop';res.innerHTML='<b>Not a HAART structure</b>Your notes start treatment with <b>2 NRTIs plus an NNRTI and/or a protease inhibitor</b>.';return}
+    if(key==='EFV+TDF+XTC'||key==='3TC+ABC+EFV'){res.className='res go';res.innerHTML='<b>A regimen of choice</b>This matches the notes: tenofovir, emtricitabine and efavirenz, or abacavir, lamivudine and efavirenz.';return}
+    if(other[0]==='LPV-r'){res.className='res maybe';res.innerHTML='<b>2 NRTIs + a boosted PI</b>Right structure, but your notes reserve it for resistance to first-line, women wishing to become pregnant, or psychiatric illness.';return}
+    res.className='res maybe';res.innerHTML='<b>Right structure, not the first choice</b>2 NRTIs + an NNRTI is correct. The regimens of choice pair tenofovir with emtricitabine, or abacavir with lamivudine, plus efavirenz.';
+  }
+  sc.querySelectorAll('.pal').forEach(p=>p.addEventListener('click',()=>{const c=p.dataset.c,i=sel.indexOf(c);if(i>=0)sel.splice(i,1);else if(sel.length<3)sel.push(c);draw()}));
+  draw();
+},
+beats:[
+B('Now the principles of treatment. First, the aim: reduce the plasma viral load as much as possible, for as long as possible. Treatment should start before the immune system is irreversibly damaged, but the need for early treatment must be balanced against the risk of toxicity.',{s:1,f:1,a:1}),
+B('Second, treatment needs commitment and strict adherence over many years. So the regimen chosen should take convenience and patient tolerance into account.',{s:2,f:2,a:2}),
+B('Third, resistance is reduced by using a combination of drugs. The combination should have synergistic or additive activity, but their toxicity must not be additive.',{s:3,f:3,a:3}),
+B('Fourth, viral sensitivity to antiretroviral drugs should be established before starting treatment, or before switching drugs if the infection is not responding.',{s:4,f:4,a:4}),
+B('When to start depends mainly on the CD4 count. Viral load and clinical symptoms may also help. The timing and choice should also consider the drugs\' effects on things like the risk of cardiovascular events.',{s:5,f:5,a:5}),
+B('Treatment is a combination called highly active antiretroviral therapy. It starts with two nucleoside reverse transcriptase inhibitors plus either a protease inhibitor, or a non-nucleoside reverse transcriptase inhibitor, or both. The regimens of choice are tenofovir, emtricitabine and efavirenz, or abacavir, lamivudine and efavirenz.',{s:6,f:6,a:6}),
+B('Regimens with two NRTIs and a boosted protease inhibitor are reserved for three groups: patients with resistance to first-line regimens, women wishing to become pregnant, and patients with psychiatric illness.',{s:7,f:7,a:7}),
+B('If a patient needs treatment for both HIV and chronic hepatitis B, use antivirals that are active against both diseases.',{s:8,f:8,a:8}),
+B('Finally, switching. Deterioration of the condition, clinically or in the virus, may require a change in therapy. The choice depends on the response to previous treatment, tolerance, and the possibility of cross resistance.',{s:9,f:9,a:9}),
+B('Your turn. Build a regimen by tapping three drugs, and see whether it matches the notes. Press continue when you are ready.',{s:10,f:null,a:10,wait:true,prompt:'Build a regimen from three drugs, then press continue.'})
+]});
+
+CHAPTERS.push(quizChapter('q2','Checkpoint 2: drugs and principles',[
+ {q:'Which class blocks the insertion of viral DNA into the host genome?',o:['Integrase inhibitors (raltegravir)','Protease inhibitors','Fusion inhibitors','NRTIs'],why:'Integrase inserts viral DNA into the cell\'s genome. Raltegravir inhibits it.',ch:'drugs'},
+ {q:'Why is a low dose of ritonavir added to other protease inhibitors?',o:['It boosts their blood levels and has no antiviral activity of its own at that dose','It adds a second antiviral effect','It prevents rash','It treats opportunistic infections'],why:'Low-dose ritonavir increases the persistence of the other PI\'s plasma concentrations.',ch:'drugs'},
+ {q:'Which was the first anti-HIV drug introduced?',o:['Zidovudine','Tenofovir','Efavirenz','Raltegravir'],why:'Zidovudine, a nucleoside reverse transcriptase inhibitor, was first.',ch:'drugs'},
+ {q:'Which NNRTI has a high incidence of rash (including Stevens-Johnson syndrome) and occasionally fatal hepatitis?',o:['Nevirapine','Efavirenz','Maraviroc','Atazanavir'],why:'Nevirapine. Efavirenz is better known for CNS and psychiatric effects.',ch:'drugs'},
+ {q:'Which is a regimen of choice to start HAART in your notes?',o:['Tenofovir + emtricitabine + efavirenz','Zidovudine alone','Stavudine + didanosine + nevirapine','Raltegravir alone'],why:'Two NRTIs plus an NNRTI: TDF + XTC + EFV, or ABC + 3TC + EFV.',ch:'principles'},
+ {q:'Why are drugs combined in HIV treatment?',o:['To reduce the development of resistance','To make each tablet cheaper','Because one drug cannot enter cells','To avoid taking tablets daily'],why:'Combinations reduce resistance. They should add up in activity without adding up in toxicity.',ch:'principles'}
+],'Checkpoint two. Six questions on the drug classes and the principles of treatment. Press continue when you are done.'));
+
+/* ===== 6 Pregnancy, breastfeeding, children ===== */
+CHAPTERS.push({id:'special',title:'Pregnancy, breastfeeding and children',
+html:()=>`
+ <div class="panel" data-at="1"><h3>Aims of treatment in pregnancy</h3><div class="grid g3">
+   <div class="panel"><span class="num">1</span><p style="margin-top:8px">Reduce the risk of <b>toxicity to the fetus</b>. The teratogenic potential of most antiretrovirals is unknown.</p></div>
+   <div class="panel"><span class="num">2</span><p style="margin-top:8px"><b>Minimise viral load</b> and disease progression in the mother.</p></div>
+   <div class="panel"><span class="num">3</span><p style="margin-top:8px"><b>Prevent transmission</b> to the neonate.</p></div></div>
+   <p class="mute" style="margin-top:10px">All treatment options need careful assessment by a specialist.</p></div>
+ <div data-at="2" class="grid g2">
+   <div class="panel"><h3>Zidovudine alone</h3><p>Reduces transmission to the neonate.</p>${R('AZT')}</div>
+   <div class="panel"><h3>Combination ART</h3><p><b>Maximises</b> the chance of preventing transmission and is optimal for the mother.</p><p class="mute">Possible downside: a greater risk of preterm delivery.</p></div></div>
+ <div data-at="3"><div class="panel"><h3>Breastfeeding</h3><p class="big">Breastfeeding by HIV-positive mothers may infect the infant and should be avoided.</p></div><div class="note" style="margin-top:10px"><b>Check this one with your lecturer.</b> This is what your notes say. Current guidance in many countries, including Zambia, now often advises mothers on effective treatment to breastfeed. The Zambia 2014 table later in your notes also lists regimens for breastfeeding women.</div></div>
+ <div data-at="4" class="panel"><h3>Children</h3><p class="big">HIV disease in children has a different natural progression from adults.</p><p>Children should be managed within a <b>formal paediatric HIV clinical network</b>, by specialists who have access to guidelines and information on antiretroviral drugs for children.</p></div>`,
+beats:[
+B('Pregnancy. Treatment of HIV in pregnancy has three aims. One, reduce the risk of toxicity to the fetus, although the teratogenic potential of most antiretroviral drugs is unknown. Two, minimise the viral load and disease progression in the mother. Three, prevent transmission of infection to the newborn. Every option needs careful assessment by a specialist.',{a:1}),
+B('Zidovudine on its own reduces transmission to the newborn. But combination antiretroviral therapy gives the best chance of preventing transmission and is the optimal therapy for the mother. One possible downside is that combination therapy may carry a greater risk of preterm delivery.',{a:2}),
+B('Breastfeeding. Your notes say breastfeeding by HIV-positive mothers may cause HIV infection in the infant and should be avoided. Do check this with your lecturer, because guidance on breastfeeding has changed in many countries since these notes were written.',{a:3}),
+B('Children. HIV disease in children has a different natural progression from that in adults. Children with HIV should be managed within a formal paediatric HIV clinical network, by specialists who have access to guidelines and information on antiretroviral drugs for children.',{a:4})
+]});
+
+/* ===== 7 PMTCT ===== */
+const tg=rows=>`<div class="tlx"><div class="hd"></div><div class="hd">Pregnancy</div><div class="hd">Labour</div><div class="hd">After birth</div>${rows.map(r=>`<div class="hd">${r[0]}</div>${r.slice(1).map(c=>c?`<div>${c}</div>`:`<div class="em">&ndash;</div>`).join('')}`).join('')}</div>`;
+const INF6='Zidovudine for <b>6 weeks</b>, starting 6 to 12 hours after birth';
+CHAPTERS.push({id:'pmtct',title:'Preventing mother-to-child transmission',
+html:()=>`
+ <div data-at="1" class="panel"><h3>Viral load at delivery decides the risk</h3>
+   <div style="height:40px;border-radius:10px;background:linear-gradient(90deg,var(--c-ok),var(--c-warn) 55%,var(--c-bad));position:relative"><span style="position:absolute;left:18%;top:-2px;bottom:-2px;border-left:3px dashed #fff"></span></div>
+   <div style="display:flex;justify-content:space-between;gap:12px;margin-top:6px" class="sm"><span>Undetectable, below <b>400 copies/mL</b>: very few infected children</span><span style="text-align:right">Detectable or high: higher risk</span></div>
+   <p style="margin-top:10px">Risk of vertical transmission is <b>directly proportional</b> to the mother's plasma viral load at delivery.</p>
+   <div class="note" data-s="2" style="margin-top:6px"><b>Elective caesarean section</b> helps most in women with detectable or high viral loads.</div></div>
+ <div data-at="2" class="grid g2">
+   <div class="panel"><h3>Zidovudine alone</h3><p class="readout">~70%<small>lower transmission</small></p><p>Given in pregnancy and labour, and to the infant after birth. Works whatever the maternal viral load or CD4 count.</p></div>
+   <div class="panel"><h3>But it is suboptimal</h3><p>For mothers with <b>high viral loads</b>, use combination antiretroviral therapy.</p></div></div>
+ <div data-at="3" class="panel"><h3>Guidelines (USA and UK)</h3>${li(['Zidovudine-based therapy is of proven benefit.','<b>Combination regimens are the standard of care</b> for treating pregnant women and preventing perinatal transmission.','Offer treatment to prevent transmission to <b>all pregnant women, regardless of CD4 count</b>.'])}<div class="note" style="margin-top:10px"><b>Why do some drugs differ from the Zambia table?</b> This part of your notes quotes US and UK guidance. The Zambia 2014 tables come later.</div></div>
+ <div data-at="4"><div class="k">Already on HAART and becomes pregnant</div>${tg([
+   ['Mother','Continue HAART. Replace efavirenz in the first trimester, and stavudine + didanosine. Avoid nelfinavir (possible harmful manufacturing contaminants).','IV zidovudine, other drugs by mouth','Continue treatment'],
+   ['Infant','','',INF6]])}</div>
+ <div data-at="5"><div class="k">Never treated before</div>${tg([
+   ['Mother','Needs HAART for own health: start HAART (same precautions). Does not: offer it for prevention, and it may start after the first trimester.','Continue','Stop unless there is an indication to continue. If a long half-life NNRTI was used, give NRTIs for <b>7 more days</b> after stopping it.'],
+   ['Infant','','',INF6]])}</div>
+ <div data-at="6"><div class="k">Had antiretrovirals before</div>${tg([
+   ['Mother','HAART chosen by <b>resistance testing</b>. Use zidovudine in the regimen when feasible.','Continue','Evaluate whether treatment needs to continue'],
+   ['Infant','','',INF6]])}<p class="mute sm" style="margin-top:8px">In all three situations the infant gets zidovudine for 6 weeks, starting 6 to 12 hours after birth.</p></div>
+ <div data-at="7"><div class="k">No treatment before labour: option 1</div>${tg([
+   ['Mother','','Continuous <b>IV zidovudine</b> infusion',''],
+   ['Infant','','',INF6]])}
+   <div class="k" style="margin-top:12px">Option 2</div>${tg([
+   ['Mother','','Continuous IV zidovudine + <b>single dose nevirapine</b> at onset. Consider adding lamivudine.','Zidovudine + lamivudine for 7 days, to reduce nevirapine resistance'],
+   ['Infant','','','Single oral dose of nevirapine at 2 to 3 days + zidovudine for 6 weeks']])}</div>
+ <div data-at="8"><div class="k">No treatment before or during labour</div>${tg([
+   ['Mother','','',''],
+   ['Infant','','','Still give <b>zidovudine for 6 weeks</b>, started as soon as possible after birth']])}<div class="note" style="margin-top:10px">Using other drugs to protect the infant needs <b>specialist consultation</b>.</div></div>`,
+beats:[
+B('Preventing mother-to-child transmission. The risk of vertical transmission is directly proportional to the mother\'s plasma viral load at the time of delivery. Very few HIV-infected children are born to mothers whose viral load is undetectable, which means below 400 copies per millilitre.',{s:1,a:1}),
+B('This is why elective caesarean section helps most in women with a detectable or high viral load.',{s:2,a:1}),
+B('Zidovudine on its own, given in pregnancy and labour and to the infant after birth, reduces vertical transmission by about 70 percent, whatever the mother\'s viral load or CD4 count. But it is suboptimal for mothers with high viral loads. They should have combination antiretroviral therapy.',{a:2}),
+B('The US guidelines say zidovudine-based therapy is proven, but combination regimens should be the standard of care, both for treating pregnant women and for preventing transmission to the baby. Treatment to prevent transmission should be offered to all women, regardless of CD4 count.',{a:3}),
+B('Situation one. A woman already on HAART becomes pregnant. She continues her regimen, but efavirenz is replaced in the first trimester because it is potentially teratogenic, and so is the stavudine and didanosine combination. Nelfinavir is avoided because of concerns about harmful contaminants from manufacturing. Treatment continues in labour, with zidovudine given intravenously and the other drugs by mouth, and after the birth.',{a:4}),
+B('Situation two. A woman who has never had treatment. If she needs therapy, she starts HAART with the same precautions. If she does not need it for her own health, it should still be offered to prevent transmission, but it may be delayed until after the first trimester, and stopped after delivery unless there is a reason to continue. If the regimen includes an NNRTI with a long half-life, continue the NRTIs for seven days after stopping it, so the lingering NNRTI is not left alone.',{a:5}),
+B('Situation three. A woman who has had antiretrovirals before. She should be offered a HAART regimen based on resistance testing, using zidovudine when feasible, and the need to continue is evaluated after delivery. In all three situations, the baby receives zidovudine, by vein or by mouth, for six weeks, starting 6 to 12 hours after birth.',{a:6}),
+B('Now, a woman who had no treatment before labour. Option one: continuous intravenous zidovudine in labour, and zidovudine for the baby for six weeks starting within 6 to 12 hours. Option two: intravenous zidovudine plus a single dose of nevirapine when labour starts. Consider adding lamivudine in labour, and zidovudine with lamivudine for 7 days after birth, to reduce the development of nevirapine resistance. The baby gets a single oral dose of nevirapine at 2 to 3 days, plus zidovudine for 6 weeks.',{a:7}),
+B('Finally, if the mother had no antiretroviral therapy before or during labour, the baby should still be given zidovudine for six weeks, started as soon as possible after birth. Using other drugs to protect the baby needs specialist consultation.',{a:8})
+]});
+
+/* ===== 8 PEP ===== */
+CHAPTERS.push({id:'pep',title:'Post-exposure prophylaxis (PEP)',
+html:()=>`
+ <div data-at="1" class="panel"><h3>The most effective prevention</h3><p class="big">Behavioural change</p>${li(['Promote safe sex practices','Needle exchange schemes for people who inject drugs'])}<p class="mute" style="margin-top:8px">PEP is the back-up after a possible exposure. First: non-occupational exposure, such as sex, injecting drug use or other exposure outside work.</p></div>
+ <div data-at="2" class="panel"><h3>28 days of HAART is recommended when ALL three apply</h3>
+   <div class="grid g3"><div class="panel"><span class="num">1</span><p style="margin-top:6px">Exposure to body fluids of a person <b>known or suspected</b> to have HIV</p></div><div class="panel"><span class="num">2</span><p style="margin-top:6px">A <b>substantial risk</b> of transmission</p></div><div class="panel"><span class="num">3</span><p style="margin-top:6px">Person presents <b>within 72 hours</b></p></div></div>
+   <div style="display:flex;height:28px;border-radius:8px;overflow:hidden;margin-top:12px"><div style="flex:72;background:var(--c-ok);color:#0D1828" class="sm"><b style="padding-left:10px">0 to 72 hours</b></div><div style="flex:40;background:var(--c-warn);color:#0D1828" class="sm"><b style="padding-left:10px">later</b></div></div></div>
+ <div data-at="3" class="panel"><h3>Source of unknown HIV status</h3><p>When the person presents within 72 hours and the source's status is unknown, or the exposure would be a substantial risk <b>if</b> the source were infected:</p><p class="big">Weigh risks and benefits case by case.</p></div>
+ <div data-at="4" class="panel"><h3>PEP is generally not recommended when</h3>${li(['There is no substantial risk of transmission','The person presents more than 72 hours after exposure'],'bad')}<p class="mute" style="margin-top:8px">It may still be considered after 72 hours if the exposure is a substantial risk.</p></div>
+ <div data-at="5" class="panel"><h3>Recommended regimen: non-occupational exposure</h3><div class="regs">${R('TDF + XTC + EFV')}<span class="or">or, with LPV-r in place of EFV</span>${R('TDF + XTC + LPV-r')}</div></div>
+ <div data-at="6" class="panel"><h3>Try it: does PEP apply?</h3>
+   <div class="k">Source</div><div class="rowsel" data-grp="src"><button type="button" class="opt" data-v="known">Known or suspected HIV</button><button type="button" class="opt" data-v="unknown">Unknown HIV status</button></div>
+   <div class="k">Risk of transmission</div><div class="rowsel" data-grp="risk"><button type="button" class="opt" data-v="yes">Substantial</button><button type="button" class="opt" data-v="no">Not substantial</button></div>
+   <div class="k">Time since exposure</div><div class="rowsel" data-grp="time"><button type="button" class="opt" data-v="in">Within 72 hours</button><button type="button" class="opt" data-v="out">More than 72 hours</button></div>
+   <div class="res" id="pres" style="margin-top:12px">Choose one option in each row.</div></div>
+ <div data-at="7" class="panel"><h3>Occupational exposure: higher-risk factors</h3>${li(['Deep injury','Visible blood on the device that caused the injury','Injury with a needle that had been in the source patient\'s artery or vein','Source patient has primary HIV infection or terminal HIV-related illness'],'bad')}</div>
+ <div data-at="8" class="grid g2"><div class="panel"><h3>Most exposures: 2 drugs</h3><div class="regs"><span class="reg">${chipC('nrti','NRTI')}<i>+</i>${chipC('nrti','NRTI')}</span><span class="or">or</span><span class="reg">${chipC('nrti','NRTI')}<i>+</i>${chipC('nrti','NtRTI')}</span></div><p class="mute sm" style="margin-top:8px">NtRTI = nucleotide reverse transcriptase inhibitor.</p></div>
+   <div class="panel"><h3>Consider more drugs when</h3>${li(['The exposure poses an increased risk','Antiretroviral resistance is likely'])}<p class="mute sm" style="margin-top:8px">No definitive data show 3 drugs work better than 2.</p></div></div>
+ <div data-at="9" class="grid g2"><div class="panel"><h3>Adding drugs</h3>${li(['<b>Protease inhibitors</b> are preferred for 3- or 4-drug regimens.','<b>Efavirenz</b> may be considered when resistance to PIs is known or suspected in the source.'])}</div>
+   <div class="panel"><h3>Not recommended for PEP</h3><p class="mute sm">Higher risk of serious or life-threatening adverse effects.</p><div class="legend" style="gap:6px">${['ABC','delavirdine','NVP','zalcitabine','ddI + d4T'].map(x=>CLS[x]?D(x):`<span class="chip c-bad">${x}</span>`).join('')}</div></div></div>`,
+mount:(sc)=>{
+  const st={};const res=sc.querySelector('#pres');
+  function out(){
+    if(!(st.src&&st.risk&&st.time)){res.className='res';res.innerHTML='Choose one option in each row.';return}
+    if(st.risk==='no'){res.className='res stop';res.innerHTML='<b>PEP generally not recommended</b>There is no substantial risk of transmission.';return}
+    if(st.time==='out'){res.className='res maybe';res.innerHTML='<b>Generally not recommended, but may be considered</b>The person came after 72 hours, but the exposure is a substantial risk.';return}
+    if(st.src==='known'){res.className='res go';res.innerHTML='<b>28-day course of HAART recommended</b>Substantial risk, source known or suspected to have HIV, and within 72 hours. Regimen: TDF + XTC + EFV (or LPV-r).';return}
+    res.className='res maybe';res.innerHTML='<b>Evaluate risks and benefits case by case</b>The source\'s HIV status is unknown, and the person presented within 72 hours.';
+  }
+  sc.querySelectorAll('.rowsel').forEach(g=>g.addEventListener('click',e=>{const b=e.target.closest('.opt');if(!b)return;g.querySelectorAll('.opt').forEach(x=>x.classList.toggle('ok',x===b));st[g.dataset.grp]=b.dataset.v;out()}));
+},
+beats:[
+B('Post-exposure prophylaxis, or PEP, means taking antiretrovirals soon after a possible exposure to HIV. First, a reminder that behavioural change is the most effective way to reduce the spread of HIV in the general population. That includes promoting safe sex practices and needle exchange schemes for people who inject drugs.',{a:1}),
+B('Non-occupational exposure means exposure through sex, injecting drug use, or other situations outside work. A 28-day course of HAART is recommended when three things are true. The exposure was to body fluids of a person known or suspected to have HIV. There is a substantial risk of transmission. And the person presents within 72 hours of the exposure.',{a:2}),
+B('If the person presents within 72 hours but the source\'s HIV status is unknown, or the exposure would be a substantial risk if the source were infected, the risks and benefits of PEP should be evaluated on an individual case basis.',{a:3}),
+B('PEP is generally not recommended where there is no substantial risk of transmission, or when the person presents more than 72 hours after the exposure. Although it may be considered after 72 hours if the exposure represents a substantial risk.',{a:4}),
+B('The recommended regimen for non-occupational exposure is tenofovir, emtricitabine and efavirenz, or lopinavir with ritonavir in place of efavirenz.',{a:5}),
+B('Your turn. Choose the source, the risk, and the timing, and see what your notes recommend. Press continue when you are ready.',{a:6,wait:true,prompt:'Try the PEP decision tool, then press continue.'}),
+B('Now occupational exposure, for example a needle-stick injury at work. These factors raise the risk of acquiring HIV: a deep injury, visible blood on the device, a needle that had been in the source patient\'s artery or vein, and a source patient with primary HIV infection or terminal HIV-related illness.',{a:7}),
+B('Most occupational exposures can be managed with two drugs: two nucleoside reverse transcriptase inhibitors, or one NRTI and one nucleotide reverse transcriptase inhibitor. There are no definitive data showing that three drugs work better, but more drugs may be considered when the exposure poses an increased risk, or when resistance is likely.',{a:8}),
+B('When adding drugs, protease inhibitors are preferred for three or four drug regimens. Efavirenz may be considered when resistance to protease inhibitors is known or suspected in the source person. Because of a higher risk of serious or life-threatening side effects, abacavir, delavirdine, nevirapine, zalcitabine, and the combination of didanosine and stavudine are not recommended for PEP.',{a:9})
+]});
+
+CHAPTERS.push(quizChapter('q3','Checkpoint 3: pregnancy, PMTCT and PEP',[
+ {q:'Non-occupational PEP should ideally be started within…',o:['72 hours, as a 28-day course','7 days, as a 7-day course','24 hours, as a single dose','1 month, as a 6-month course'],why:'A 28-day course of HAART, when the person presents within 72 hours of a substantial-risk exposure.',ch:'pep'},
+ {q:'The risk of vertical transmission is directly proportional to…',o:['The mother\'s plasma viral load at delivery','The baby\'s birth weight','The mother\'s age','The number of previous pregnancies'],why:'Very few infected children are born to mothers with an undetectable viral load (below 400 copies/mL).',ch:'pmtct'},
+ {q:'For babies in the PMTCT scenarios, zidovudine is given for…',o:['6 weeks, starting 6 to 12 hours after birth','1 week, starting at 2 weeks','6 months, starting at 6 weeks','Single dose at birth only'],why:'Zidovudine IV or oral for 6 weeks, starting 6 to 12 hours after birth.',ch:'pmtct'},
+ {q:'Zidovudine alone, in mother and infant, reduces vertical transmission by about…',o:['70%','10%','30%','100%'],why:'About 70%, whatever the viral load or CD4 count. But combination therapy is needed when the viral load is high.',ch:'pmtct'},
+ {q:'Which is a risk factor for occupationally acquired HIV?',o:['A deep injury, or visible blood on the device','A superficial scratch with a clean needle','A splash of water on intact skin','Handling clean dressings'],why:'Also: needle from the source\'s artery or vein, and a source with primary infection or terminal illness.',ch:'pep'},
+ {q:'Which drug is NOT recommended for PEP?',o:['Nevirapine','Tenofovir','Lopinavir/ritonavir','Emtricitabine'],why:'Abacavir, delavirdine, nevirapine, zalcitabine and didanosine + stavudine carry higher risks of serious adverse effects.',ch:'pep'}
+],'Checkpoint three. Six questions covering pregnancy, preventing mother-to-child transmission and post-exposure prophylaxis.'));
+/* ===== 9 Side effects and cautions ===== */
+CHAPTERS.push({id:'sidefx',title:'Side effects and cautions',
+html:()=>`
+ <div data-at="1" class="panel"><h3>Immune reconstitution syndrome (IRIS)</h3><p class="big">Treatment can make an infection look worse before it gets better.</p>${li(['Antiretroviral therapy may cause toxicity or a <b>paradoxical worsening</b> of an underlying opportunistic infection.','As immune function improves, the body may mount a <b>marked inflammatory reaction</b> against leftover opportunistic organisms.'])}</div>
+ <div data-at="2" class="panel"><h3>Lipodystrophy syndrome</h3><p>Metabolic effects of antiretroviral treatment, grouped under one name:</p><div class="grid g3"><div class="panel"><b>Fat redistribution</b></div><div class="panel"><b>Insulin resistance</b></div><div class="panel"><b>Dyslipidaemia</b></div></div><p class="mute" style="margin-top:10px">Consider the usual cardiovascular risk factors before starting, and advise lifestyle changes to reduce the risk.</p></div>
+ <div data-at="3" class="panel"><h3>Measure plasma lipids and blood glucose</h3><div class="arrowrow"><span class="chip lg c-warn">Before starting</span><span class="ar">&rarr;</span><span class="chip lg c-warn">After 3 to 6 months</span><span class="ar">&rarr;</span><span class="chip lg c-warn">Then every year</span></div></div>
+ <div data-at="4" class="panel"><h3>Fat redistribution</h3>${li(['Loss of subcutaneous fat, increased abdominal fat, "buffalo hump", breast enlargement.',`Associated with regimens containing ${chipC('pi','PIs')} and ${chipC('nrti','NRTIs')}.`,`${D('d4T')} (especially with ddI) and, less so, ${D('AZT')}: higher risk of <b>lipoatrophy</b>. Use only if alternatives are unsuitable.`],'bad')}</div>
+ <div data-at="5" class="panel"><h3>Lipids and glucose</h3>${li([`<b>Dyslipidaemia</b>: associated with antiretrovirals, particularly ${chipC('pi','PIs')}.`,`<b>Insulin resistance and hyperglycaemia</b>: ${chipC('pi','PIs')} and some ${chipC('nrti','NRTIs')}.`,'<b>Atazanavir and darunavir</b> may be less likely to cause dyslipidaemia.','<b>Saquinavir and atazanavir</b> may be less likely to impair glucose tolerance.'],'')}</div>
+ <div data-at="6" class="panel"><h3>${chipC('nrti','NRTIs')} &nbsp;Lactic acidosis</h3><p>Life-threatening lactic acidosis, with <b>hepatomegaly and hepatic steatosis</b> (fatty liver), has been reported.</p><div class="grid g2"><div><div class="k">Use with caution in</div>${li(['Hepatomegaly','Hepatitis, especially hepatitis C treated with interferon alfa and ribavirin','Liver-enzyme abnormalities','Other liver risk factors, including alcohol abuse','Obese women'],'bad')}</div><div><div class="k">Stop the NRTI if</div>${li(['Symptomatic hyperlactataemia','Lactic acidosis','Progressive hepatomegaly','Rapid deterioration of liver function'],'bad')}<p class="sm mute" style="margin-top:8px">${D('d4T')}, especially with ${D('ddI')}, carries a higher risk. Use only if alternatives are unsuitable.</p></div></div></div>
+ <div data-at="7" class="panel"><h3>${chipC('nrti','NRTIs')} &nbsp;Hepatic impairment</h3><p>Use with caution in patients with <b>chronic hepatitis B or C</b>. The risk of hepatic side effects is greater.</p></div>
+ <div data-at="8" class="grid g2"><div class="panel"><h3>${chipC('pi','PIs')} &nbsp;Diabetes</h3><p>Associated with hyperglycaemia. Use with caution in diabetes.</p></div><div class="panel"><h3>${chipC('pi','PIs')} &nbsp;Haemophilia</h3><p>Patients with haemophilia may be at increased risk of bleeding. Caution is needed.</p></div></div>`,
+beats:[
+B('Now the side effects and cautions you must know. First, immune reconstitution syndrome. Antiretroviral therapy may cause toxicity, or a paradoxical worsening of an underlying opportunistic infection. As immune function improves, the body can mount a marked inflammatory reaction against leftover organisms.',{a:1}),
+B('Next, lipodystrophy syndrome. This is the name for the metabolic effects of antiretroviral treatment: fat redistribution, insulin resistance and dyslipidaemia. Before starting, consider the usual cardiovascular risk factors, and advise patients on lifestyle changes to reduce that risk.',{a:2}),
+B('Plasma lipids and blood glucose should be measured before starting antiretroviral therapy, again after three to six months of treatment, and then every year.',{a:3}),
+B('Fat redistribution means loss of fat under the skin, more fat in the abdomen, a so-called buffalo hump, and breast enlargement. It is associated with regimens containing protease inhibitors and nucleoside reverse transcriptase inhibitors. Stavudine, especially with didanosine, and to a lesser extent zidovudine, carry a higher risk of lipoatrophy, so they should be used only if alternatives are unsuitable.',{a:4}),
+B('Dyslipidaemia is associated with antiretroviral treatment, particularly with protease inhibitors. Protease inhibitors and some NRTIs are associated with insulin resistance and high blood sugar. Among the protease inhibitors, atazanavir and darunavir may be less likely to cause dyslipidaemia, while saquinavir and atazanavir may be less likely to impair glucose tolerance.',{a:5}),
+B('Now cautions for the NRTIs. Life-threatening lactic acidosis with an enlarged liver and fatty liver has been reported. Use NRTIs with caution in patients, particularly obese women, who have an enlarged liver, hepatitis, especially hepatitis C treated with interferon alfa and ribavirin, abnormal liver enzymes, or other liver risk factors, including alcohol abuse. Stop the NRTI if there is symptomatic hyperlactataemia, lactic acidosis, progressive liver enlargement, or rapid deterioration of liver function. Stavudine, especially with didanosine, has the highest risk.',{a:6}),
+B('NRTIs should also be used with caution in chronic hepatitis B or C, because the risk of liver side effects is greater.',{a:7}),
+B('And for the protease inhibitors. They are associated with high blood sugar, so use caution in diabetes. Caution is also needed in patients with haemophilia, who may be at increased risk of bleeding.',{a:8})
+]});
+
+/* ===== 10 Practical hints ===== */
+CHAPTERS.push({id:'hints',title:'Efavirenz, nevirapine and monitoring',
+html:()=>`
+ <div data-at="1" class="panel"><h3>Preferred NNRTI for first-line cART</h3><div class="regs">${D('EFV')}</div><p style="margin-top:8px">Consider efavirenz <b>at all times</b>, unless there are contraindications to its use.</p></div>
+ <div data-at="2" class="panel"><h3>${D('EFV')} &nbsp;CNS side effects</h3><div class="legend" style="gap:6px"><span class="pill">Dizziness</span><span class="pill">Drowsiness</span><span class="pill">Insomnia</span><span class="pill">Abnormal dreams</span><span class="pill">Impaired concentration</span></div><p style="margin-top:10px">Usually start with the <b>first few doses</b>, and fade or disappear after <b>2 to 4 weeks</b>.</p></div>
+ <div data-at="3" class="panel"><h3>${D('EFV')} &nbsp;How to take it</h3>${li(['<b>Avoid fatty meals</b> for 4 hours before or after the dose.','Recommend taking it <b>before bedtime</b>.'],'good')}</div>
+ <div data-at="4" class="panel"><h3>If CNS effects last</h3><div class="arrowrow"><span class="pill">Still troublesome after 6 to 8 weeks</span><span class="ar">&rarr;</span>${D('NVP')}<span class="mute">substitute to an NVP-based cART</span></div></div>
+ <div data-at="5" class="panel"><h3>${D('NVP')} &nbsp;Starting nevirapine</h3><p class="sm mute">Nevirapine is an <b>auto-inducer</b>. It speeds up its own metabolism, so its half-life falls a lot within 2 weeks.</p>
+   <div class="dose" id="dose"></div>
+   <input class="rng" id="dayrng" type="range" min="1" max="28" value="1" aria-label="Treatment day">
+   <div class="status" id="daystat"></div><p class="sm mute" style="margin:8px 0 0">The 2-week once-daily lead-in lowers the risk of rash and liver toxicity.</p></div>
+ <div data-at="6" class="panel"><h3>Monitoring cART</h3><div class="grid g2"><div class="status"><b>Preferred: viral load</b>Shows how well cART is performing in an individual.</div><div class="status danger" style="border-color:var(--c-warn);background:color-mix(in srgb,var(--c-warn) 12%,transparent)"><b>If viral load is not routinely available</b>Use CD4 count and clinical monitoring.</div></div></div>
+ <div data-at="7" class="panel"><h3>${D('ETR')} &nbsp;Safety profile: hypersensitivity</h3><div class="wk" id="wk"></div>
+   ${li(['<b>Rash</b>, usually in week 2: the most common side effect. More frequent in women.','<b>Life-threatening hypersensitivity</b>, usually weeks 3 to 6: rash, eosinophilia and systemic symptoms (fever, malaise, myalgia, arthralgia, blistering, oral lesions, conjunctivitis, hepatitis).'],'bad')}</div>
+ <div data-at="8" class="grid g2"><div class="panel"><h3>Stop permanently if</h3><p>A hypersensitivity reaction or severe rash develops.</p></div><div class="panel"><h3>Continue if</h3><p>The rash is mild or moderate, without signs of hypersensitivity. It usually resolves within 2 weeks.</p></div><div class="panel" style="grid-column:1/-1"><h3>Counselling</h3><p>Tell patients how to <b>recognise</b> a hypersensitivity reaction, and to <b>seek immediate medical attention</b> if a hypersensitivity reaction or severe rash develops.</p></div></div>`,
+mount:(sc)=>{
+  const dose=sc.querySelector('#dose'),rng=sc.querySelector('#dayrng'),stat=sc.querySelector('#daystat'),wk=sc.querySelector('#wk');
+  dose.innerHTML=Array.from({length:28},(_,i)=>`<div class="${i<14?'a':'b'}" data-d="${i+1}">${i+1}</div>`).join('');
+  function upd(){const d=+rng.value;dose.querySelectorAll('div').forEach(x=>x.style.outline=(+x.dataset.d===d)?'3px solid var(--c-warn)':'');
+    stat.className='status';stat.innerHTML=d<=14?`<b>Day ${d}: nevirapine 200 mg once daily</b>Lead-in period (days 1 to 14).`:`<b>Day ${d}: nevirapine 200 mg twice daily (BD)</b>After the 2-week lead-in.`}
+  rng.addEventListener('input',upd);upd();
+  wk.innerHTML=Array.from({length:8},(_,i)=>{const w=i+1;const c=w===2?'rash':(w>=3&&w<=6)?'dan':'';return `<div class="${c}">Wk ${w}${w===2?'<br>rash':(w>=3&&w<=6)?'<br>risk':''}</div>`}).join('');
+},
+beats:[
+B('Practical hints for starting efavirenz or nevirapine. Efavirenz is the preferred non-nucleoside reverse transcriptase inhibitor for first-line cART initiation. Consider using it at all times, unless there are contraindications.',{a:1}),
+B('Efavirenz is associated with central nervous system side effects: dizziness, drowsiness, insomnia, abnormal dreams and impaired concentration. These generally occur with the first few doses and usually diminish or disappear after two to four weeks.',{a:2}),
+B('Avoid fatty meals for four hours before or after taking efavirenz, and recommend taking it before bedtime.',{a:3}),
+B('If the CNS effects persist beyond six to eight weeks, substitute to a nevirapine-based cART.',{a:4}),
+B('When starting nevirapine-based cART, give 200 milligrams once daily for two weeks, and then increase to 200 milligrams twice daily. Nevirapine is an auto-inducer. That means it induces its own metabolism, and its half-life falls significantly within two weeks of treatment. So to reduce the risk of rash and liver toxicity, it must be given once daily for two weeks, then twice daily after that. Drag the day slider to see the dose.',{a:5}),
+B('Monitoring. Viral load is the preferred way to see how well cART is performing in an individual. If viral load is not routinely available, use CD4 count and clinical monitoring.',{a:6}),
+B('Now the safety profile of etravirine. Rash, usually in the second week, is the most common side effect, and it appears more often in women. Life-threatening hypersensitivity reactions are usually reported during weeks three to six. They are characterised by rash, eosinophilia and systemic symptoms, including fever, general malaise, muscle and joint pain, blistering, oral lesions, conjunctivitis and hepatitis.',{a:7}),
+B('Discontinue etravirine permanently if a hypersensitivity reaction or a severe rash develops. If the rash is mild or moderate, without signs of hypersensitivity, it may continue without interruption, and the rash usually resolves within two weeks. For counselling, patients should be told how to recognise a hypersensitivity reaction, and to seek immediate medical attention if it, or a severe rash, develops.',{a:8})
+]});
+
+/* ===== 11 First-line by population ===== */
+const FL_NOTE=`<div class="note" style="margin-top:10px">&dagger; The dagger on NVP appears in your notes, but its footnote text is missing from the file. Ask your lecturer what it refers to.</div>`;
+const pr=(p,a)=>`<div class="k">Preferred</div><div class="regs">${p}</div><div class="k">Alternative</div><div class="regs">${a}</div>`;
+CHAPTERS.push({id:'first',title:'First-line regimens by population (Zambia 2014)',
+html:()=>`<div>${pickList('pop',[
+ {t:'Pregnant and breastfeeding women',h:'Pregnant and breastfeeding women',d:`<div class="k">First-line</div>${pr(R('TDF + XTC + EFV'),R('TDF + XTC + NVP†')+'<span class="or">or</span>'+R('ABC + 3TC + EFV'))}<div class="k" style="margin-top:14px">If previous sd-NVP exposure, NVP mono-therapy exposure (NVP without 7 days of AZT + 3TC cover), or unsure of tail coverage</div>${pr(R('TDF + XTC + LPV-r'),R('TDF + XTC + ATV-r'))}`},
+ {t:'Children, 6 weeks to under 3 months',d:`<p class="mute sm">First-line, when the mother had sd-NVP exposure, NVP mono-therapy exposure (without 7 days of AZT + 3TC cover), or is unsure of tail coverage.</p><div class="k">Preferred</div><div class="regs">${R('AZT + 3TC + LPV-r')}</div><div class="k">Then</div><p>After 3 months, substitute to the preferred first line with <b>ABC</b>.</p>`},
+ {t:'Children, 3 months to under 5 years',d:`<div class="k">First-line</div><div class="regs">${R('ABC + 3TC + LPV-r')}</div><div class="k">Alternative</div><div class="regs">${R('AZT + 3TC + LPV-r')}</div><p class="mute sm" style="margin-top:6px">After 5 years, substitute to the preferred first line with ${R('TDF + XTC + LPV-r')}</p><div class="k" style="margin-top:14px">With HIV and TB co-infection</div><div class="regs">${R('ABC + 3TC + EFV')}</div><p class="mute sm" style="margin-top:6px">After completing ATT, substitute to the preferred first line with LPV-r.</p>`},
+ {t:'Children 5 to under 10 and adolescents under 35 kg',sub:'Adolescents 10 to under 19 years, weighing under 35 kg',d:`<p class="mute sm">First-line, with <b>no</b> history of maternal sd-NVP, maternal NVP mono-therapy, or a mother unsure of tail coverage.</p>${pr(R('TDF + XTC + EFV')+'<span class="mute sm">weight-based dosing</span>',R('TDF + XTC + NVP†')+'<span class="mute sm">weight-based dosing</span><span class="or">or</span>'+R('ABC + 3TC + EFV'))}`},
+ {t:'Adolescents 35 kg or more, and adults',sub:'Adolescents 10 to under 20 years, weighing 35 kg or more',d:`<p class="mute sm">A <b>once-daily fixed-dose combination</b> is recommended.</p>${pr(R('TDF + XTC + EFV'),R('TDF + XTC + NVP†')+'<span class="or">or</span>'+R('ABC + 3TC + EFV'))}`}
+ ])}${FL_NOTE}
+ <div class="note" data-s="1" style="margin-top:10px"><b>In plain words: the "tail".</b> Nevirapine stays in the body for days after a single dose. If it lingers alone, without 7 days of AZT + 3TC cover, resistance can develop. That is why these exposed mothers and babies are put on a boosted PI regimen.</div></div>`,
+beats:[
+B('Now the heart of the Zambia 2014 tables. First-line regimens by population. In these tables, XTC is the guideline shorthand for either lamivudine or emtricitabine. Tap any group in the list at any time.',{s:0}),
+B('For pregnant and breastfeeding women, the preferred first-line regimen is tenofovir, XTC and efavirenz. Alternatives are tenofovir, XTC and nevirapine, or abacavir, lamivudine and efavirenz.',{s:0,fx:sc=>E.pick(sc,'pop',0)}),
+B('But if the woman has had single-dose nevirapine before, or nevirapine alone without seven days of zidovudine and lamivudine cover, or the cover is unclear, the preferred regimen becomes tenofovir, XTC and lopinavir with ritonavir. The alternative is tenofovir, XTC and atazanavir with ritonavir. The nevirapine left in the body is called the tail, and that is why this history matters.',{s:1,fx:sc=>E.pick(sc,'pop',0)}),
+B('For young infants from six weeks to under three months, when the mother had single-dose nevirapine exposure or the cover is unsure, the preferred regimen is zidovudine, lamivudine and lopinavir with ritonavir. After three months, substitute to the preferred first line with abacavir.',{s:1,fx:sc=>E.pick(sc,'pop',1)}),
+B('For children from three months to under five years, first-line is abacavir, lamivudine and lopinavir with ritonavir. The alternative is zidovudine, lamivudine and lopinavir with ritonavir. After five years, substitute to the preferred first line with tenofovir, XTC and lopinavir with ritonavir.',{s:1,fx:sc=>E.pick(sc,'pop',2)}),
+B('If that child also has TB, the regimen is abacavir, lamivudine and efavirenz. After the anti-TB treatment is completed, substitute to the preferred first line with lopinavir with ritonavir.',{s:1,fx:sc=>E.pick(sc,'pop',2)}),
+B('Children from five to under ten years, and adolescents under 35 kilograms, with no history of maternal single-dose nevirapine exposure: preferred is tenofovir, XTC and efavirenz with weight-based dosing. Alternatives are tenofovir, XTC and nevirapine with weight-based dosing, or abacavir, lamivudine and efavirenz.',{s:1,fx:sc=>E.pick(sc,'pop',3)}),
+B('Adolescents of 35 kilograms or more, and adults. A once-daily fixed-dose combination is recommended. Preferred is tenofovir, XTC and efavirenz. The alternatives are tenofovir, XTC and nevirapine, or abacavir, lamivudine and efavirenz.',{s:1,fx:sc=>E.pick(sc,'pop',4)}),
+B('Your turn. Tap each group and say the preferred regimen out loud before reading it. Press continue when you are ready.',{s:1,wait:true,prompt:'Tap each group and test yourself, then press continue.'})
+]});
+
+/* ===== 12 Special cases and TB ===== */
+const regline=(l,rs)=>`<div class="k">${l}</div><div class="regs">${rs}</div>`;
+CHAPTERS.push({id:'cases',title:'Special cases and HIV with TB',
+html:()=>`<div data-at="1"><div class="k">Special cases: adolescents, adults, pregnant and breastfeeding women</div>${pickList('sp',[
+ {t:'HIV and TB co-infection',d:regline('Preferred',R('TDF + XTC + EFV'))+regline('Alternative',R('ABC + 3TC + EFV'))+`<div class="k" style="margin-top:12px">If an LPV-r regimen is used</div><div class="regs">${R('TDF + XTC + LPV-r')}</div><p class="sm mute" style="margin-top:6px">Double the dose of LPV-r if on a rifampicin regimen, or switch rifampicin to rifabutin (avoid in pregnancy or breast-feeding mothers).</p>${regline('Alternative',R('ABC + 3TC + LPV-r'))}`},
+ {t:'Severe untreated mental illness',d:regline('Preferred',R('TDF + XTC + NVP'))+regline('Alternative',R('TDF + XTC + LPV-r')+'<span class="or">or</span>'+R('ABC + 3TC + NVP'))+`<p class="sm mute" style="margin-top:8px">Efavirenz is avoided: it commonly causes psychiatric and CNS disturbances.</p>`},
+ {t:'HIV-2 infection, or HIV-1 and HIV-2 co-infection',d:regline('Preferred',R('TDF + XTC + LPV-r'))+regline('Alternative',R('TDF + XTC + ATV-r')+'<span class="or">or</span>'+R('ABC + 3TC + LPV-r'))+`<p class="sm mute" style="margin-top:8px">NNRTIs are not active against HIV-2, so none appear here.</p>`},
+ {t:'Renal insufficiency',sub:'CrCl under 50 mL/min',d:`<div class="k">Preferred</div><p class="big">ABC-based cART</p><p class="sm mute">Tenofovir can cause renal toxicity.</p>`},
+ {t:'Renal insufficiency in pregnant women',sub:'Serum creatinine over 125 µmol/L',d:`<div class="k">Preferred</div><p class="big">ABC-based cART</p>`},
+ {t:'Renal insufficiency and ABC hypersensitivity',d:`<div class="k">What to do</div><p class="big">Adjust the dose of TDF, 3TC, FTC and AZT.</p>`},
+ {t:'Renal insufficiency and on dialysis',d:`<div class="k">What to do</div><p class="big">Adjust the dose of TDF, 3TC, FTC and AZT.</p>`},
+ {t:'Defaulters on first-line',sub:'No treatment failure suspected',d:regline('Restart',R('TDF + XTC + EFV'))}
+ ])}</div>
+ <div data-at="2"><div class="k">HIV-TB co-infection scenarios</div>${pickList('tb',[
+ {t:'Pregnant, on cART, develops TB',d:`<div class="k">TB management</div><p>Start ATT immediately.</p><div class="k">cART</div><p>Continue EFV-based cART.</p><p>Evaluate for failure and consider switching to 2nd line cART in consultation with the next level.</p>`},
+ {t:'Pregnant, on ATT, diagnosed with HIV',d:`<div class="k">TB management</div><p>Continue ATT.</p><div class="k">cART</div><p>Start cART immediately.</p><div class="regs">${R('TDF + XTC + EFV')}</div><p class="sm mute" style="margin-top:6px">If renal insufficiency: ${R('ABC + 3TC + EFV')}</p>`},
+ {t:'Child 3 months to under 3 years with TB and HIV',d:`<div class="k">TB management</div><p>Start ATT (RHZ) immediately.</p><div class="k">cART</div><div class="regs">${R('ABC + 3TC + EFV')}</div><p class="sm mute" style="margin-top:6px">Alternative: ${R('ABC + 3TC + AZT')}</p>`},
+ {t:'Newly diagnosed TB (category I) and HIV',d:`<div class="k">TB management</div><p>Start CAT I ATT immediately.</p><div class="k">cART</div><p>Start cART as soon as ATT is tolerated (usually within 2 to 3 weeks), <b>regardless of CD4 count or WHO clinical stage</b>.</p><div class="regs">${R('TDF + XTC + EFV')}</div><p class="sm mute" style="margin-top:6px">If renal insufficiency: ${R('ABC + 3TC + EFV')}</p>`},
+ {t:'TB treatment case (category II) and HIV',d:`<div class="k">TB management</div><p>Start CAT II ATT immediately.</p><div class="k">cART</div><p>Same advice as category I: start as soon as ATT is tolerated, with <b>TDF/XTC + EFV</b>, or ABC + 3TC + EFV if renal insufficiency.</p>`},
+ {t:'On cART, develops TB',d:`<div class="k">TB management</div><p>Start ATT immediately.</p><div class="k">cART</div>${li(['If NVP-based: <b>switch NVP to EFV</b> and continue cART.','If on LPV-r: <b>double the LPV-r dose</b>, or start rifabutin in place of rifampicin.','Evaluate for failure and consider switching to 2nd line cART in consultation with the next level.'])}`},
+ {t:'On ATT, diagnosed with HIV',d:`<div class="k">TB management</div><p>Continue ATT.</p><div class="k">cART</div><p>Start as soon as ATT is tolerated (usually within 2 to 3 weeks), regardless of CD4 count or WHO clinical stage.</p><div class="regs">${R('TDF + XTC + EFV')}</div><p class="sm mute" style="margin-top:6px">If renal insufficiency: ${R('ABC + 3TC + EFV')}</p>`},
+ {t:'On 2nd line cART with LPV-r, develops TB',d:`<div class="k">TB management</div><p>Start CAT I or CAT II ATT per guidelines, immediately.</p><div class="k">cART</div>${li(['Increase LPV-r from <b>2 tabs BD to 3 tabs BD for 2 weeks</b>, then <b>4 tabs BD</b> for the rest of TB treatment.','If rifabutin is available (in place of rifampicin), start at <b>150 mg Monday, Wednesday, Friday</b>.'])}`}
+ ])}</div>`,
+beats:[
+B('Next, special cases. Tap any case in the list if you want to explore at your own pace. In your notes, these apply to adolescents, adults, and pregnant and breastfeeding women.',{a:1}),
+B('HIV and TB together. The preferred regimen is tenofovir, XTC and efavirenz, with abacavir, lamivudine and efavirenz as the alternative. If a lopinavir with ritonavir regimen is used, double the dose of lopinavir with ritonavir if the patient is on rifampicin, or switch rifampicin to rifabutin. Avoid rifabutin in pregnancy or breastfeeding.',{a:1,fx:sc=>E.pick(sc,'sp',0)}),
+B('Severe untreated mental illness. The preferred regimen is tenofovir, XTC and nevirapine, which avoids efavirenz and its psychiatric effects. Alternatives are tenofovir, XTC and lopinavir with ritonavir, or abacavir, lamivudine and nevirapine.',{a:1,fx:sc=>E.pick(sc,'sp',1)}),
+B('HIV-2 infection, or HIV-1 and HIV-2 together. The NNRTIs do not work against HIV-2, so the preferred regimen is tenofovir, XTC and lopinavir with ritonavir. Alternatives are tenofovir, XTC and atazanavir with ritonavir, or abacavir, lamivudine and lopinavir with ritonavir.',{a:1,fx:sc=>E.pick(sc,'sp',2)}),
+B('Renal insufficiency, meaning creatinine clearance below 50 millilitres per minute. Use an abacavir-based cART, because tenofovir can damage the kidney.',{a:1,fx:sc=>E.pick(sc,'sp',3)}),
+B('Renal insufficiency in pregnant women, with serum creatinine above 125 micromoles per litre, is also an abacavir-based cART.',{a:1,fx:sc=>E.pick(sc,'sp',4)}),
+B('If the patient has renal insufficiency and also abacavir hypersensitivity, adjust the dose of tenofovir, lamivudine, emtricitabine and zidovudine.',{a:1,fx:sc=>E.pick(sc,'sp',5)}),
+B('The same dose adjustment applies to a patient with renal insufficiency who is on dialysis.',{a:1,fx:sc=>E.pick(sc,'sp',6)}),
+B('And defaulters on first line, where treatment failure is not suspected, go back on tenofovir, XTC and efavirenz.',{a:1,fx:sc=>E.pick(sc,'sp',7)}),
+B('Now the TB and HIV scenarios. Notice the pattern as we go. Efavirenz-based treatment stays preferred. Nevirapine gets switched to efavirenz. Lopinavir with ritonavir needs a higher dose, or rifabutin instead of rifampicin. And cART starts as soon as TB treatment is tolerated, usually within two to three weeks, regardless of CD4 count or WHO stage.',{a:2,fx:sc=>E.pick(sc,'tb',0)}),
+B('A pregnant woman on cART who develops TB. Start anti-TB treatment immediately, continue the efavirenz-based cART, and evaluate for failure. Consider switching to second line in consultation with the next level.',{a:2,fx:sc=>E.pick(sc,'tb',0)}),
+B('A pregnant woman already on anti-TB treatment who is diagnosed with HIV. Continue the TB treatment and start cART immediately, with tenofovir, XTC and efavirenz. If there is renal insufficiency, use abacavir, lamivudine and efavirenz.',{a:2,fx:sc=>E.pick(sc,'tb',1)}),
+B('A child from three months to under three years with TB and HIV. Start anti-TB treatment with rifampicin, isoniazid and pyrazinamide immediately. The cART is abacavir, lamivudine and efavirenz, and the alternative is abacavir, lamivudine and zidovudine.',{a:2,fx:sc=>E.pick(sc,'tb',2)}),
+B('Newly diagnosed TB, category one, with HIV. Start category one anti-TB treatment immediately. Start cART as soon as the TB treatment is tolerated, usually within two to three weeks, regardless of CD4 count or WHO clinical stage. Use tenofovir, XTC and efavirenz, or abacavir, lamivudine and efavirenz if there is renal insufficiency.',{a:2,fx:sc=>E.pick(sc,'tb',3)}),
+B('A category two TB treatment case with HIV. Start category two anti-TB treatment immediately. In your notes the cART box is shared with category one, so the same advice applies.',{a:2,fx:sc=>E.pick(sc,'tb',4)}),
+B('A patient already on cART who develops TB. Start anti-TB treatment immediately. If the regimen is nevirapine-based, switch nevirapine to efavirenz and continue. If on lopinavir with ritonavir, double its dose or use rifabutin in place of rifampicin. Evaluate for failure, and consider second line in consultation with the next level.',{a:2,fx:sc=>E.pick(sc,'tb',5)}),
+B('A patient on anti-TB treatment who is then diagnosed with HIV. Continue the TB treatment, and start cART as soon as it is tolerated, usually within two to three weeks, regardless of CD4 count or WHO stage. Use tenofovir, XTC and efavirenz, or the abacavir version if there is renal insufficiency.',{a:2,fx:sc=>E.pick(sc,'tb',6)}),
+B('Last, a patient on second-line cART with lopinavir and ritonavir who develops TB. Start category one or two anti-TB treatment immediately. Increase lopinavir with ritonavir from two tablets twice daily to three tablets twice daily for two weeks, then four tablets twice daily for the rest of the TB treatment. If rifabutin is available instead of rifampicin, start at 150 milligrams on Monday, Wednesday and Friday.',{a:2,fx:sc=>E.pick(sc,'tb',7)}),
+B('Your turn. Tap through the scenarios and try to predict the cART before you read it. Press continue when you are ready.',{a:2,wait:true,prompt:'Explore the scenarios, then press continue.'})
+]});
+
+/* ===== 13 Second and third line ===== */
+const fail=(t)=>`<div class="k">Failing first-line</div><div class="regs">${t}</div>`;
+CHAPTERS.push({id:'lines',title:'Second-line and third-line treatment',
+html:()=>`
+ <div data-at="1" class="panel"><h3>When a regimen stops working</h3><div class="ladder"><div class="panel"><span class="tag">1st line</span><p class="big" style="margin-top:8px">Start here</p><p class="sm mute">Zambia 2014 first-line tables</p></div><span class="ar">&rarr;</span><div class="panel"><span class="tag">2nd line</span><p class="big" style="margin-top:8px">2 NRTIs + LPV-r</p><p class="sm mute">Alternative: 2 NRTIs + ATV-r</p></div><span class="ar">&rarr;</span><div class="panel"><span class="tag">3rd line</span><p class="big" style="margin-top:8px">RAL, DRV-r, ATV-r</p><p class="sm mute">plus an optimal NRTI backbone</p></div></div></div>
+ <div data-at="2">${pickList('sl',[
+ {t:'Children 0 to under 10 years',d:`${fail(R('ABC + XTC')+'<span class="or">or</span>'+R('TDF + XTC')+'<span class="or">or</span>'+R('AZT + XTC')+'<span class="or">or</span>'+R('d4T + XTC')+'<span class="or">or</span><span class="chip c-nnrti">NNRTI-based cART</span>')}<div class="k">2nd line</div><p class="mute">Left blank in your notes for this row. Ask your lecturer what to write.</p>`},
+ {t:'Children under 3 years',d:`${fail(D('LPV-r'))}<div class="k">2nd line</div><p class="big">No switch</p><p class="sm mute">Comment: improve adherence and refer to the next level.</p>`},
+ {t:'Children over 3 years',d:`${fail('<span class="chip c-pi">LPV-r-based cART</span>')}<div class="k">2nd line</div><p class="big">EFV-based cART</p><p class="sm mute">Comment: for children who are NNRTI non-exposed (naive).</p>`},
+ {t:'Adolescents 10 to under 15 years',d:`${fail(R('TDF + XTC + EFV')+'<span class="or">or</span>'+R('TDF + XTC + NVP'))}<div class="k">2nd line</div><div class="regs">${R('AZT + 3TC + LPV-r')}</div><p class="sm mute" style="margin-top:6px">2nd line should consist of 2 NRTIs + LPV-r. The alternative is 2 NRTIs + ATV-r.</p>`},
+ {t:'Adolescents 15 to under 20 years',d:`${fail(R('ABC + 3TC + EFV')+'<span class="or">or</span>'+R('ABC + 3TC + NVP'))}<div class="k">2nd line</div><div class="regs">${R('AZT + 3TC + LPV-r')}</div><p class="sm mute" style="margin-top:6px">2 NRTIs + LPV-r. The alternative is 2 NRTIs + ATV-r.</p>`},
+ {t:'Adults',d:`${fail(R('AZT + 3TC + EFV')+'<span class="or">or</span>'+R('AZT + 3TC + NVP')+'<span class="or">or</span>'+R('d4T + 3TC + NVP'))}<div class="k">2nd line</div><div class="regs">${R('TDF + XTC + LPV-r')}</div><p class="sm mute" style="margin-top:6px">2 NRTIs + LPV-r. The alternative is 2 NRTIs + ATV-r.</p>`},
+ {t:'Pregnant and breastfeeding women',sub:'HIV and hepatitis B co-infection',d:`${fail(R('TDF + XTC + EFV')+'<span class="or">or</span>'+R('TDF + XTC + NVP'))}<div class="k">2nd line</div><div class="regs">${R('TDF + XTC + AZT + LPV-r')}</div>`}
+ ])}</div>
+ <div data-at="3"><div class="panel"><h3>Third line</h3><p>For patients who have followed the national guidelines, the most likely drugs to succeed are:</p><div class="grid g3" style="margin:10px 0"><div class="panel"><span class="tag">Integrase inhibitor</span><p class="big" style="margin-top:8px">${D('RAL')}</p><p class="sm mute">Raltegravir</p></div><div class="panel"><span class="tag">Protease inhibitor</span><p class="big" style="margin-top:8px">${D('DRV-r')}</p><p class="sm mute">Darunavir with ritonavir</p></div><div class="panel"><span class="tag">Protease inhibitor</span><p class="big" style="margin-top:8px">${D('ATV-r')}</p><p class="sm mute">Atazanavir with ritonavir</p></div></div><p>plus an <b>optimal nucleoside background</b>, for example ${R('TDF + XTC')} or ${R('AZT + 3TC')}.</p>
+  <div class="k" data-s="1" style="margin-top:14px">Example third-line regimen</div><div class="regs" data-s="1"><span class="reg">${D('ETR')}<i>+</i>${D('DRV-r')}<i class="mute">(or ATV-r)</i><i>+</i>${D('RAL')}<i>+</i>${D('TDF')}<i>+</i>${D('XTC')}<i class="mute">(or AZT + 3TC)</i></span></div><p class="sm mute" data-s="1" style="margin-top:8px">Other third-line combinations are derived from the above.</p></div></div>`,
+beats:[
+B('When a regimen stops working, the notes give a ladder. First line, then second line, then third line. Second line should generally consist of two NRTIs plus lopinavir with ritonavir, and the alternative is two NRTIs plus atazanavir with ritonavir. Tap any population to see which first-line regimen is failing and what replaces it.',{a:1}),
+B('Children from zero to under ten years. Your notes list several failing first-line regimens: abacavir or tenofovir with XTC, zidovudine or stavudine with XTC, or an NNRTI-based cART. The second-line box is blank in your notes, so ask your lecturer what to write.',{a:2,fx:sc=>E.pick(sc,'sl',0)}),
+B('Children under three years who are failing lopinavir with ritonavir: no switch. Improve adherence and refer to the next level.',{a:2,fx:sc=>E.pick(sc,'sl',1)}),
+B('Children over three years who are failing a lopinavir-with-ritonavir regimen and have not been exposed to NNRTIs: switch to an efavirenz-based cART.',{a:2,fx:sc=>E.pick(sc,'sl',2)}),
+B('Adolescents from ten to under fifteen years, failing tenofovir, XTC with efavirenz or nevirapine, move to zidovudine, lamivudine and lopinavir with ritonavir.',{a:2,fx:sc=>E.pick(sc,'sl',3)}),
+B('Adolescents from fifteen to under twenty years, failing abacavir, lamivudine with efavirenz or nevirapine, also move to zidovudine, lamivudine and lopinavir with ritonavir.',{a:2,fx:sc=>E.pick(sc,'sl',4)}),
+B('Adults failing zidovudine, lamivudine with efavirenz or nevirapine, or stavudine, lamivudine and nevirapine, move to tenofovir, XTC and lopinavir with ritonavir.',{a:2,fx:sc=>E.pick(sc,'sl',5)}),
+B('Pregnant and breastfeeding women with hepatitis B co-infection, failing tenofovir, XTC with efavirenz or nevirapine, move to tenofovir, XTC, zidovudine and lopinavir with ritonavir.',{a:2,fx:sc=>E.pick(sc,'sl',6)}),
+B('Third line. For patients who have followed the national guidelines, the drugs most likely to work are raltegravir, an integrase inhibitor, darunavir with ritonavir, and atazanavir with ritonavir, which are protease inhibitors. These are combined with an optimal nucleoside background, for example tenofovir with XTC, or zidovudine with lamivudine.',{a:3,s:0}),
+B('An example third-line regimen is etravirine, plus darunavir with ritonavir or atazanavir with ritonavir, plus raltegravir, plus tenofovir and XTC, or zidovudine and lamivudine. Other third-line combinations are derived from these.',{a:3,s:1})
+]});
+
+/* ===== 14 Toxicities and substitutes ===== */
+const sub=(t)=>`<div class="k">Recommended substitute</div>${t}`;
+CHAPTERS.push({id:'tox',title:'Common toxicities and substitutes',
+html:()=>`<div>${pickList('tox',[
+ {t:'TDF',sub:'Tenofovir',d:`<div class="k">Common toxicity</div><p class="big">Renal toxicity (renal tubular dysfunction) and reduced bone density</p>${sub('<div class="regs">'+D('ABC')+'</div>')}`},
+ {t:'ABC',sub:'Abacavir',d:`<div class="k">Common toxicity</div><p class="big">Hypersensitivity reaction</p>${sub('<div class="regs">'+D('TDF')+'</div><p class="sm mute">if creatinine clearance is normal</p><div class="regs">'+D('AZT')+'</div><p class="sm mute">if the child is 3 months to under 5 years old</p>')}`},
+ {t:'EFZ',sub:'Efavirenz',d:`<div class="k">Common toxicity</div><p class="big">Severe or persistent CNS side effects</p>${sub('<div class="regs">'+D('NVP')+'</div>')}`},
+ {t:'NVP (or EFZ)',sub:'Nevirapine',d:`<div class="k">Common toxicity</div><p class="big">Rash, Stevens-Johnson syndrome, hepatitis</p>${sub('<div class="regs">'+D('LPV-r')+'<span class="or">or</span>'+D('ATV-r')+'</div>')}`},
+ {t:'LPV-r',sub:'Lopinavir/ritonavir',d:`<div class="k">Common toxicity</div><p class="big">Persistent diarrhoea, hyperlipidaemia</p>${sub('<div class="regs">'+D('ATV-r')+'</div>')}`},
+ {t:'ATV-r',sub:'Atazanavir/ritonavir',d:`<div class="k">Common toxicity</div><p class="big">Hyperbilirubinaemia, icterus (jaundice)*</p><div class="k">Recommended substitute</div><p class="mute">None written in your notes. See the footnote: only substitute if the condition is intolerable to the patient.</p>`},
+ {t:'AZT**',sub:'Zidovudine',d:`<div class="k">Common toxicity</div><p class="big">Severe anaemia or neutropenia, severe gastrointestinal intolerance, lactic acidosis</p>${sub('<div class="regs">'+D('TDF')+'<span class="or">or</span>'+D('ABC')+'</div><p class="sm mute">if on first-line cART. Rule out failure before substituting.</p><div class="regs">'+D('d4T')+'</div><p class="sm mute">if on second-line cART, for anaemia</p>')}`},
+ {t:'d4T**',sub:'Stavudine',d:`<div class="k">Common toxicity</div><p class="big">Lactic acidosis, lipodystrophy, peripheral neuropathy</p>${sub('<div class="regs">'+D('TDF')+'<span class="or">or</span>'+D('ABC')+'</div><p class="sm mute">Rule out failure before substituting. If failure is suspected, switch to second line.</p>')}`}
+ ])}
+ <div class="note" data-s="1" style="margin-top:10px"><b>* Jaundice.</b> Hyperbilirubinaemia and icterus do not reflect hepatic disease and are not contraindications to continued therapy. Only substitute ATV-r if the condition is intolerable to the patient.</div>
+ <div class="note" data-s="2" style="margin-top:8px"><b>** AZT and d4T</b> should no longer be used in first-line cART. Patients on AZT- or d4T-based first line who are not failing should be switched to a TDF- or ABC-based first line.</div></div>`,
+beats:[
+B('This table is one to know well. For each drug, the common toxicity, and the recommended substitute. Tap a drug to see its row at any time.',{s:0}),
+B('Tenofovir. The common toxicity is renal toxicity, specifically renal tubular dysfunction, and reduced bone density. The recommended substitute is abacavir.',{fx:sc=>E.pick(sc,'tox',0)}),
+B('Abacavir. The toxicity is a hypersensitivity reaction. Substitute tenofovir if the creatinine clearance is normal, or zidovudine if the child is between three months and under five years.',{fx:sc=>E.pick(sc,'tox',1)}),
+B('Efavirenz. Severe or persistent CNS side effects. Substitute nevirapine.',{fx:sc=>E.pick(sc,'tox',2)}),
+B('Nevirapine, or efavirenz. Rash, Stevens-Johnson syndrome or hepatitis. Substitute lopinavir with ritonavir, or atazanavir with ritonavir.',{fx:sc=>E.pick(sc,'tox',3)}),
+B('Lopinavir with ritonavir. Persistent diarrhoea or hyperlipidaemia. Substitute atazanavir with ritonavir.',{fx:sc=>E.pick(sc,'tox',4)}),
+B('Atazanavir with ritonavir. Hyperbilirubinaemia and jaundice. Your notes give no substitute here, and the footnote explains why.',{fx:sc=>E.pick(sc,'tox',5)}),
+B('The footnote says hyperbilirubinaemia and jaundice do not reflect liver disease, and are not reasons to stop therapy. Only substitute atazanavir with ritonavir if the patient finds it intolerable.',{s:1,fx:sc=>E.pick(sc,'tox',5)}),
+B('Zidovudine. Severe anaemia or neutropenia, severe gastrointestinal intolerance, or lactic acidosis. On first line, substitute tenofovir or abacavir, after ruling out treatment failure. On second line, for anaemia, substitute stavudine.',{s:1,fx:sc=>E.pick(sc,'tox',6)}),
+B('Stavudine. Lactic acidosis, lipodystrophy or peripheral neuropathy. Substitute tenofovir or abacavir, after ruling out failure. If failure is suspected, switch to second line.',{s:1,fx:sc=>E.pick(sc,'tox',7)}),
+B('One more rule. Zidovudine and stavudine should no longer be used in first line. Patients on a zidovudine or stavudine first line who are not failing should be switched to a tenofovir or abacavir-based first line.',{s:2,fx:sc=>E.pick(sc,'tox',7)}),
+B('Your turn. Tap a drug, say its toxicity and substitute from memory, then check. Press continue when you are ready.',{s:2,wait:true,prompt:'Test yourself on the table, then press continue.'})
+]});
+
+/* ===== 15 Adherence ===== */
+CHAPTERS.push({id:'adh',title:'ART adherence',
+html:()=>`<div class="split even">
+  <div style="display:flex;flex-direction:column;gap:12px">
+   <div class="panel" data-s="1" data-f="1"><h3>Why it matters</h3><p class="big">Adherence is the single most important strategy for long-term success.</p>${li(['It controls HIV infection.','It prevents cART resistance.','<b>Treatment failure is generally a failure with adherence</b>, so start good adherence from day one.'])}</div>
+   <div class="panel" data-s="4" data-f="4"><h3>Assessing adherence: the whole team</h3><div class="legend" style="gap:6px"><span class="pill">Clinical and laboratory parameters</span><span class="pill">Patient reports</span><span class="pill">Pill counts</span><span class="pill">Pharmacy pick-ups</span><span class="pill">Other adherence tools</span></div><p class="sm mute" style="margin-top:8px">Done by <b>all members of the health care team</b>.</p></div>
+  </div>
+  <div class="panel" data-s="2" data-f="2 3"><h3>Good adherence means</h3>${`<ul class="list good">${[
+   [2,'Taking ARV drugs at the <b>same time of day</b>, every day'],[2,'Taking <b>all</b> medications at the right time and in correct doses'],[2,'<b>Not skipping</b> doses'],[2,'Not stopping and restarting therapy without medical advice'],
+   [3,'Adopting appropriate <b>health-seeking behaviour</b>'],[3,'<b>Keeping appointments</b>'],[3,'<b>Not sharing</b> medications with others']].map(x=>`<li data-s="${x[0]}">${x[1]}</li>`).join('')}</ul>`}</div>
+</div>`,
+beats:[
+B('Finally, adherence. Adherence remains the single most important strategy for long-term success of patients on cART. It controls HIV infection and prevents resistance. Treatment failure is generally a failure with adherence, so efforts to ensure good adherence from the very start of treatment are mandatory.',{s:1,f:1}),
+B('Good adherence means taking antiretroviral drugs at the same time of day, all the time. Taking all the medications at the right time and in the correct doses. Not skipping doses. And not stopping and restarting therapy without medical advice.',{s:2,f:2}),
+B('It also means adopting appropriate health-seeking behaviour, keeping appointments, and not sharing medications with others.',{s:3,f:3}),
+B('Adherence should be assessed by all members of the health care team, using clinical and laboratory parameters, patient reports, pill counts, pharmacy pick-ups, and other adherence tools. Pill counts and pharmacy pick-ups are places where pharmacy staff see adherence directly.',{s:4,f:4})
+]});
+
+/* ===== 16 Recap ===== */
+CHAPTERS.push({id:'recap',title:'Recap: what to remember',
+html:()=>`<div class="grid g2">
+ <div class="panel" data-s="1" data-f="1"><h3>The virus</h3>${li(['HIV is a retrovirus that enters CD4 cells and copies its RNA into DNA.','AIDS-defining illnesses appear when CD4 is below 200 or 14%.','No cure. Stopping treatment lets the virus rebound.'])}</div>
+ <div class="panel" data-s="2" data-f="2"><h3>The drugs</h3>${li([`${chipC('entry','Entry')} ${chipC('nrti','NRTI')} ${chipC('nnrti','NNRTI')} ${chipC('ii','Integrase')} ${chipC('pi','PI')}`,'Each class blocks one step. Ritonavir boosts other PIs.','Combine drugs to prevent resistance.'])}</div>
+ <div class="panel" data-s="3" data-f="3"><h3>The regimens</h3><div class="regs">${R('TDF + XTC + EFV')}</div>${li(['2 NRTIs + an NNRTI is first-line in the Zambia 2014 tables.','Check lipids and glucose at baseline, 3 to 6 months, then yearly.','Viral load is the preferred monitoring tool.'])}</div>
+ <div class="panel" data-s="4" data-f="4"><h3>Special situations</h3>${li(['PEP: within 72 hours, 28 days of HAART.','PMTCT: zidovudine for the baby for 6 weeks.','TB: start cART 2 to 3 weeks after ATT is tolerated.','Renal problem: ABC-based. Mental illness: NVP-based. HIV-2: LPV-r.'])}</div>
+ <div class="panel" data-s="5" data-f="5" style="grid-column:1/-1"><h3>Your role</h3><p class="big">Adherence decides success. Use pill counts, pharmacy pick-ups and counselling to protect it.</p><p class="mute">Teach patients to recognise hypersensitivity (rash, fever), to take efavirenz at bedtime away from fatty meals, and never to share or stop medicines without advice.</p></div>
+</div>`,
+beats:[
+B('Let\'s recap. The virus: HIV is a retrovirus that enters CD4 cells and copies its RNA into DNA. AIDS-defining illnesses appear when the CD4 count is below 200, or 14 percent. There is no cure, and stopping treatment lets the virus rebound.',{s:1,f:1}),
+B('The drugs: five classes, entry inhibitors, NRTIs, NNRTIs, integrase inhibitors and protease inhibitors. Each blocks one step in the life cycle. Ritonavir boosts other protease inhibitors, and drugs are combined to prevent resistance.',{s:2,f:2}),
+B('The regimens: two NRTIs plus an NNRTI is the first-line backbone in the Zambia 2014 tables, with tenofovir, XTC and efavirenz as the preferred combination. Check lipids and glucose at the start, at three to six months, then yearly. Viral load is the preferred monitoring tool.',{s:3,f:3}),
+B('Special situations. PEP within 72 hours, as 28 days of HAART. In PMTCT, the baby gets zidovudine for six weeks. With TB, start cART two to three weeks after the TB treatment is tolerated. Renal problems point to an abacavir-based regimen, mental illness to nevirapine, and HIV-2 to lopinavir with ritonavir.',{s:4,f:4}),
+B('And your role. Adherence decides success. Pill counts, pharmacy pick-ups and good counselling protect it. Teach patients to recognise hypersensitivity, to take efavirenz at bedtime away from fatty meals, and never to share or stop their medicines without advice. Now, one last quiz.',{s:5,f:5})
+]});
+
+/* ===== 17 Final quiz ===== */
+CHAPTERS.push(quizChapter('q4','Final checkpoint',[
+ {q:'When should lipids and blood glucose be measured for a patient starting antiretrovirals?',o:['Before starting, after 3 to 6 months, then annually','Only when symptoms appear','Every week for the first year','Only at the start'],why:'This tracks lipodystrophy and its metabolic effects over time.',ch:'sidefx'},
+ {q:'Immune reconstitution syndrome is…',o:['A paradoxical worsening or inflammatory reaction as immune function improves on treatment','A drug allergy to tenofovir','Loss of body fat','A type of TB'],why:'The recovering immune system reacts strongly to leftover opportunistic organisms.',ch:'sidefx'},
+ {q:'Which counselling advice goes with efavirenz?',o:['Take at bedtime and avoid fatty meals around the dose','Take with a large fatty meal','Take only on alternate days','Stop it if you feel dizzy on day one'],why:'CNS effects usually fade after 2 to 4 weeks. Fatty meals should be avoided 4 hours before or after.',ch:'hints'},
+ {q:'How is nevirapine started?',o:['200 mg once daily for 2 weeks, then 200 mg twice daily','200 mg twice daily from day 1','400 mg once daily forever','Half dose for 6 weeks'],why:'It is an auto-inducer, so the lead-in lowers the risk of rash and hepatotoxicity.',ch:'hints'},
+ {q:'Which is the preferred first-line regimen for adults in the Zambia 2014 tables?',o:['TDF + XTC + EFV','AZT + 3TC + NVP','d4T + 3TC + NVP','LPV-r alone'],why:'Alternatives are TDF + XTC + NVP, or ABC + 3TC + EFV.',ch:'first'},
+ {q:'A patient with newly diagnosed TB (category I) and HIV. When should cART start?',o:['As soon as ATT is tolerated, usually within 2 to 3 weeks, regardless of CD4 count or WHO stage','Only after TB treatment is finished','Only if CD4 is below 50','Never together with ATT'],why:'Start the TB treatment first, then cART as soon as it is tolerated.',ch:'cases'},
+ {q:'A patient on tenofovir develops renal toxicity. The recommended substitute is…',o:['Abacavir','Stavudine','Zidovudine at double dose','Nothing, continue tenofovir'],why:'Tenofovir toxicity is renal tubular dysfunction and reduced bone density, so substitute abacavir.',ch:'tox'},
+ {q:'Which first-line choice suits a patient with severe untreated mental illness?',o:['TDF + XTC + NVP','TDF + XTC + EFV','Any regimen containing efavirenz','No treatment'],why:'Efavirenz commonly causes psychiatric and CNS disturbances, so nevirapine is preferred here.',ch:'cases'},
+ {q:'A patient on a nevirapine-based regimen develops TB and starts rifampicin-based treatment. What is advised?',o:['Switch nevirapine to efavirenz and continue cART','Stop cART permanently','Double the nevirapine dose','Switch to stavudine'],why:'For LPV-r the advice is to double the dose or use rifabutin.',ch:'cases'},
+ {q:'Which are both used to assess adherence?',o:['Pill counts and pharmacy pick-ups','Hair colour and weight alone','Only the patient\'s promise','Only the CD4 count'],why:'Also clinical and laboratory parameters, patient reports and other tools, by the whole health care team.',ch:'adh'}
+],'Final checkpoint. Ten questions across the whole lesson. Take your time, and good luck.',true));
+
+CHAPTERS.forEach((c,i)=>{c.i=i});
+let _n=0;CHAPTERS.forEach(c=>{if(c.quiz){c.kick='Checkpoint'}else{c.num=_n;c.kick=_n===0?'Start here':'Chapter '+_n;_n++}});
+window.CHAPTERS=CHAPTERS;
+</script><script>
+(function(){
+'use strict';
+const CH=window.CHAPTERS, CODES=window.CODES||[];
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const stage=$('#stage'),cover=$('#cover'),cap=$('#cap'),tl=$('#tl'),bar=$('#bar'),waitEl=$('#wait'),waitTxt=$('#waitTxt');
+const bPlay=$('#bPlay'),icPlay=$('#icPlay'),timeEl=$('#time'),selRate=$('#selRate'),selVoice=$('#selVoice'),bSnd=$('#bSnd'),icSnd=$('#icSnd'),bCC=$('#bCC');
+const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+const st={ci:0,bi:0,playing:false,waiting:false,started:false,rate:1,sound:true,cc:true,voice:null,tok:0,timer:null,done:[],scores:{},sceneCi:-1,tts:('speechSynthesis' in window)};
+const LSK='hiv-lesson-v1';
+function save(){try{localStorage.setItem(LSK,JSON.stringify({ci:st.ci,bi:st.bi,done:st.done,scores:st.scores,voice:st.voice&&st.voice.name||null,rate:st.rate}))}catch(e){}}
+function load(){try{return JSON.parse(localStorage.getItem(LSK)||'null')}catch(e){return null}}
+
+/* ---------- timing ---------- */
+const words=t=>t.trim().split(/\s+/).length;
+const beatMs=(b,r=1)=>words(b.say)*60000/(155*r)+700;
+CH.forEach((c,i)=>{c.i=i;c.ms=c.beats.reduce((a,b)=>a+beatMs(b),0)+(c.extraMs||0)});
+const totalMs=CH.reduce((a,c)=>a+c.ms,0);
+const fmt=ms=>{const s=Math.max(0,Math.round(ms/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+
+/* ---------- pronunciation for voice only ---------- */
+const PRON=[[/\bHIV-1\b/g,'H I V 1'],[/\bHIV-2\b/g,'H I V 2'],[/\bHIV\b/g,'H I V'],[/\bNNRTIs\b/g,'N N R T Is'],[/\bNNRTI\b/g,'N N R T I'],[/\bNRTIs\b/g,'N R T Is'],[/\bNRTI\b/g,'N R T I'],[/\bNtRTI\b/g,'N t R T I'],
+[/\bCD4\b/g,'C D 4'],[/\bcART\b/g,'C ART'],[/\bHAART\b/g,'H A A R T'],[/\bPEP\b/g,'P E P'],[/\bPMTCT\b/g,'P M T C T'],[/\bIRIS\b/g,'I R I S'],[/\bPIs\b/g,'P Is'],[/\bPI\b/g,'P I'],[/\bARVs\b/g,'A R Vs'],[/\bARV\b/g,'A R V'],
+[/\bATT\b/g,'A T T'],[/\bTB\b/g,'T B'],[/\bCCR5\b/g,'C C R 5'],[/\bCXCR4\b/g,'C X C R 4'],[/\bHBV\b/g,'H B V'],[/\bCNS\b/g,'C N S'],[/\bRNA\b/g,'R N A'],[/\bDNA\b/g,'D N A'],[/\bCMV\b/g,'C M V'],
+[/\bHTLV-III\b/g,'H T L V 3'],[/\bLAV\b/g,'L A V'],[/\bBD\b/g,'twice daily'],[/\bHIV\/AIDS\b/g,'H I V and AIDS'],[/\bmg\b/g,'milligrams'],[/\bEFV\b/g,'efavirenz'],[/\bNVP\b/g,'nevirapine'],[/\bTDF\b/g,'tenofovir'],[/\bABC\b/g,'abacavir'],[/\bAZT\b/g,'zidovudine'],[/\b3TC\b/g,'lamivudine'],[/\bXTC\b/g,'emtricitabine or lamivudine'],[/\bLPV-r\b/g,'lopinavir with ritonavir'],[/\bATV-r\b/g,'atazanavir with ritonavir'],[/\bd4T\b/g,'stavudine'],[/\bsd-NVP\b/g,'single-dose nevirapine'],[/\bCrCl\b/g,'creatinine clearance'],[/\bRHZ\b/g,'R H Z'],[/\bCAT\b/g,'category'],[/\bCat\b/g,'category'],
+[/\bHIV-TB\b/g,'H I V and T B']];
+const spoken=t=>PRON.reduce((a,[r,v])=>a.replace(r,v),t.replace(/–|—/g,', ').replace(/\s*\/\s*/g,' slash '));
+
+/* ---------- voices ---------- */
+function loadVoices(){
+  if(!st.tts)return;
+  let vs=[];try{vs=speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang))}catch(e){}
+  if(!vs.length)return;
+  const score=v=>(/natural|neural|online|premium|enhanced/i.test(v.name)?6:0)+(/google uk english female|samantha|serena|karen|moira|libby|sonia|jenny|aria|hazel|susan|daniel/i.test(v.name)?4:0)+(/en-GB|en-ZA|en-US|en_GB|en_US/i.test(v.lang)?2:0)+(v.localService?0:1);
+  vs.sort((a,b)=>score(b)-score(a));
+  selVoice.innerHTML=vs.map((v,i)=>`<option value="${i}">${v.name.replace(/Microsoft |Google /,'')} (${v.lang})</option>`).join('');
+  selVoice.hidden=false;
+  const saved=(load()||{}).voice;
+  let pick=vs.find(v=>v.name===saved)||vs[0];
+  st.voice=pick;selVoice.value=String(vs.indexOf(pick));
+  selVoice._vs=vs;
+}
+if(st.tts){try{speechSynthesis.onvoiceschanged=loadVoices;loadVoices()}catch(e){st.tts=false}}
+selVoice.addEventListener('change',()=>{st.voice=selVoice._vs[+selVoice.value];save();if(st.playing)restartBeat()});
+selRate.addEventListener('change',()=>{st.rate=parseFloat(selRate.value);save();if(st.playing)restartBeat()});
+bSnd.addEventListener('click',()=>{st.sound=!st.sound;setSndUI();if(!st.sound)stopSpeech();if(st.playing)restartBeat()});
+bCC.addEventListener('click',()=>{st.cc=!st.cc;cap.hidden=!st.cc;bCC.classList.toggle('on',st.cc)});
+function setSndUI(){
+  icSnd.innerHTML=st.sound?'<path d="M3 9v6h4l5 4V5L7 9z"/><path d="M16 8.500a5 5 0 010 7M18.500 5.500a9 9 0 010 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>':'<path d="M3 9v6h4l5 4V5L7 9z"/><path d="M16 9.500l5 5M21 9.500l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+  bSnd.setAttribute('aria-label',st.sound?'Voice-over on':'Voice-over off');bSnd.classList.toggle('on',st.sound);
+}
+
+/* ---------- speech / timer ---------- */
+function stopSpeech(){clearTimeout(st.timer);st.tok++;if(st.tts){try{speechSynthesis.cancel()}catch(e){}}}
+function barTo(f,ms){bar.style.transition=ms?`width ${ms}ms linear`:'none';bar.style.width=(f*100)+'%'}
+function speak(text,done){
+  const my=++st.tok;clearTimeout(st.timer);
+  const est=beatMs({say:text},st.rate);
+  barTo(0,0);void bar.offsetWidth;barTo(.96,est);
+  let over=false;const fin=()=>{if(over||my!==st.tok)return;over=true;clearTimeout(st.timer);barTo(1,120);done()};
+  if(st.sound&&st.tts){
+    try{speechSynthesis.cancel()}catch(e){}
+    st.timer=setTimeout(()=>{
+      if(my!==st.tok)return;
+      try{
+        const u=new SpeechSynthesisUtterance(spoken(text));
+        if(st.voice){u.voice=st.voice;u.lang=st.voice.lang}else u.lang='en-GB';
+        u.rate=st.rate*0.97;
+        u.onend=()=>setTimeout(fin,280);
+        u.onerror=e=>{if(my!==st.tok)return;if(e&&(e.error==='canceled'||e.error==='interrupted'))return;st.tts=false;stopSpeechSoft();st.timer=setTimeout(fin,est);const n=$('#voiceNote');if(n)n.textContent='Voice-over is not available in this browser, so the lesson runs with captions.'};
+        window.__u=u;speechSynthesis.speak(u);
+        st.timer=setTimeout(fin,est*2.2+4000);
+      }catch(e){st.timer=setTimeout(fin,est)}
+    },70);
+  }else st.timer=setTimeout(fin,est);
+}
+function stopSpeechSoft(){clearTimeout(st.timer);try{speechSynthesis.cancel()}catch(e){}}
+
+/* ---------- scene rendering ---------- */
+const api={
+  next(){st.waiting=false;next(true)},
+  record(id,score,total){st.scores[id]=[score,total];save();renderChapterGrid()},
+  restart(){go(0,0,true)}
+};
+function renderScene(){
+  const c=CH[st.ci];
+  stage.style.minHeight='';
+  stage.innerHTML=`<div class="scene" id="scene"><div class="sh"><span class="kick">${c.kick}</span><h2>${c.title}</h2></div>${c.html()}</div>`;
+  st.scene=$('#scene');st.sceneCi=st.ci;
+  if(c.mount)c.mount(st.scene,api);
+}
+function applyVisual(s,f,first,a){
+  const sc=st.scene;if(!sc)return;
+  for(let i=1;i<=9;i++)sc.classList.toggle('ge'+i,i<=s);
+  const newly=[];
+  $$('[data-s]',sc).forEach(e=>{const on=+e.dataset.s<=s;if(on&&!e.classList.contains('on'))newly.push(e);e.classList.toggle('on',on)});
+  const at=(a===undefined)?s:a;
+  $$('[data-at]',sc).forEach(e=>{const on=e.dataset.at.split(' ').includes(String(at));if(on&&!e.classList.contains('on'))newly.push(e);e.classList.toggle('on',on)});
+  $$('[data-f]',sc).forEach(e=>e.classList.toggle('hl',f!=null&&e.dataset.f.split(' ').includes(String(f))));
+  const h=stage.offsetHeight;const m=parseFloat(stage.style.minHeight)||0;if(h>m)stage.style.minHeight=h+'px';
+  if(!first&&newly.length&&st.started){try{newly[newly.length-1].scrollIntoView({block:'nearest',behavior:reduce?'auto':'smooth'})}catch(e){}}
+}
+function applyBeat(first){
+  const c=CH[st.ci],b=c.beats[st.bi];
+  applyVisual(b.s||0,b.f,first,b.a);
+  if(b.fx)b.fx(st.scene,b,E);
+  cap.textContent=b.say;
+  updateTL();
+}
+function go(ci,bi,play,first){
+  stopSpeech();st.waiting=false;waitEl.hidden=true;
+  ci=Math.max(0,Math.min(CH.length-1,ci));
+  const newScene=ci!==st.sceneCi;
+  st.ci=ci;st.bi=Math.max(0,Math.min(CH[ci].beats.length-1,bi));
+  if(newScene){renderScene();if(st.started&&!first){const r=stage.getBoundingClientRect();if(r.top<0){try{stage.scrollIntoView({block:'start',behavior:reduce?'auto':'smooth'})}catch(e){}}}}
+  if(!st.started&&play){st.started=true;cover.hidden=true}
+  applyBeat(first);
+  st.playing=!!play;
+  setPlayUI();save();
+  if(play)startBeat();else barTo(0,0);
+}
+function startBeat(){
+  const c=CH[st.ci],b=c.beats[st.bi];
+  speak(b.say,()=>{
+    if(b.wait){st.waiting=true;waitTxt.textContent=b.prompt||'Your turn. Have a go, then press continue.';waitEl.hidden=false;setPlayUI();return}
+    next(true);
+  });
+}
+function restartBeat(){if(st.waiting)return;startBeat()}
+function next(auto){
+  const c=CH[st.ci];
+  if(st.bi<c.beats.length-1){go(st.ci,st.bi+1,true);return}
+  if(!st.done.includes(st.ci))st.done.push(st.ci);
+  if(st.ci<CH.length-1){go(st.ci+1,0,true)}
+  else{st.playing=false;st.waiting=false;waitEl.hidden=true;setPlayUI();save();renderChapterGrid()}
+}
+function prev(){
+  if(st.bi>0)go(st.ci,st.bi-1,st.playing&&!st.waiting?true:st.playing);
+  else if(st.ci>0)go(st.ci-1,0,st.playing);
+}
+function play(){
+  if(!st.started){go(st.ci,st.bi,true);return}
+  if(st.waiting){api.next();return}
+  if(st.playing){st.playing=false;stopSpeech();barTo(0,0);setPlayUI()}
+  else{
+    if(st.ci===CH.length-1&&st.bi===CH[st.ci].beats.length-1&&st.done.includes(st.ci)){go(0,0,true);return}
+    st.playing=true;setPlayUI();startBeat()
+  }
+}
+function setPlayUI(){
+  const showPause=st.playing&&!st.waiting;
+  icPlay.innerHTML=showPause?'<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';
+  bPlay.setAttribute('aria-label',showPause?'Pause':(st.waiting?'Continue':'Play'));
+}
+$('#bPlay').addEventListener('click',play);
+$('#bBeN').addEventListener('click',()=>{st.waiting=false;waitEl.hidden=true;const c=CH[st.ci];if(st.bi<c.beats.length-1)go(st.ci,st.bi+1,st.playing);else if(st.ci<CH.length-1)go(st.ci+1,0,st.playing)});
+$('#bBeP').addEventListener('click',prev);
+$('#bChP').addEventListener('click',()=>go(st.bi>0?st.ci:st.ci-1,0,st.playing));
+$('#bChN').addEventListener('click',()=>go(st.ci+1,0,st.playing));
+$('#contBtn').addEventListener('click',()=>api.next());
+$('#startBtn').addEventListener('click',()=>{go(st.ci,st.bi,true)});
+$('#restartBtn').addEventListener('click',()=>{st.done=[];go(0,0,true)});
+document.addEventListener('keydown',e=>{
+  const t=e.target;if(t&&/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))return;
+  if(e.key===' '&&!(t&&t.tagName==='BUTTON')){e.preventDefault();play()}
+  else if(e.key==='ArrowRight'){e.shiftKey?$('#bChN').click():$('#bBeN').click()}
+  else if(e.key==='ArrowLeft'){e.shiftKey?$('#bChP').click():prev()}
+});
+
+/* ---------- timeline & lists ---------- */
+function buildTL(){
+  tl.innerHTML=CH.map((c,i)=>`<button type="button" class="seg${c.quiz?' qz':''}" data-i="${i}" style="--w:${c.ms}" title="${c.kick}: ${c.title.replace(/"/g,'')}" aria-label="${c.kick}: ${c.title.replace(/"/g,'')}"><i></i></button>`).join('');
+  tl.addEventListener('click',e=>{const b=e.target.closest('.seg');if(b)go(+b.dataset.i,0,st.started?st.playing:true)});
+}
+function updateTL(){
+  let before=0;
+  CH.forEach((c,i)=>{
+    const s=tl.children[i];if(!s)return;
+    let p=0;if(i<st.ci)p=100;else if(i===st.ci)p=(st.bi/c.beats.length)*100;
+    s.style.setProperty('--p',p+'%');s.classList.toggle('cur',i===st.ci);
+    if(i<st.ci)before+=c.ms;
+  });
+  const c=CH[st.ci];let within=0;for(let k=0;k<st.bi;k++)within+=beatMs(c.beats[k]);
+  timeEl.textContent=fmt(before+within)+' / '+fmt(totalMs);
+  $$('.chb',$('#chgrid')).forEach((b,i)=>b.classList.toggle('cur',i===st.ci));
+}
+function renderChapterGrid(){
+  $('#chgrid').innerHTML=CH.map((c,i)=>{
+    const sc=st.scores[c.id];
+    return `<button type="button" class="chb${st.done.includes(i)?' done':''}${i===st.ci?' cur':''}" data-i="${i}"><span class="n">${c.quiz?'?':String(c.num).padStart(2,'0')}</span><span><b>${c.title}</b><small>${c.quiz?(sc?'Score '+sc[0]+'/'+sc[1]:'Quiz checkpoint'):fmt(c.ms)+' min'}</small></span></button>`}).join('');
+}
+$('#chgrid').addEventListener('click',e=>{const b=e.target.closest('.chb');if(b){go(+b.dataset.i,0,true);$('#player').scrollIntoView({block:'start',behavior:reduce?'auto':'smooth'})}});
+function renderTranscript(){
+  $('#p-tr').innerHTML=CH.map((c,i)=>`<h3>${c.kick}: ${c.title}</h3>`+c.beats.map((b,j)=>`<p data-i="${i}" data-j="${j}">${b.say}</p>`).join('')).join('');
+  $('#p-tr').addEventListener('click',e=>{const p=e.target.closest('p');if(p){go(+p.dataset.i,+p.dataset.j,true);$('#player').scrollIntoView({block:'start',behavior:reduce?'auto':'smooth'})}});
+}
+function renderCodes(){
+  $('#codesBody').innerHTML=CODES.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]||''}</td></tr>`).join('');
+}
+$$('.tab').forEach(t=>t.addEventListener('click',()=>{
+  $$('.tab').forEach(x=>x.setAttribute('aria-selected',x===t?'true':'false'));
+  $$('.tp').forEach(p=>p.hidden=p.id!==t.getAttribute('aria-controls'));
+}));
+
+/* ---------- shared widget helpers ---------- */
+const E={
+  pick(sc,id,i){const r=$(`[data-pick="${id}"]`,sc);if(r)activatePick(r,i)},
+  jump(s,f){applyVisual(s,f)}
+};
+window.E=E;
+function activatePick(root,i){
+  $$('.pk',root).forEach(b=>b.classList.toggle('act',+b.dataset.i===i));
+  $$('.pk-d',root).forEach(d=>d.classList.toggle('act',+d.dataset.i===i));
+}
+stage.addEventListener('click',e=>{
+  const pk=e.target.closest('.pk');if(pk){activatePick(pk.closest('.pick'),+pk.dataset.i);return}
+  const j=e.target.closest('[data-jump]');if(j){const n=+j.dataset.jump;applyVisual(n,n)}
+});
+
+/* ---------- init ---------- */
+const saved=load();
+if(saved){st.done=saved.done||[];st.scores=saved.scores||{};if(saved.rate){st.rate=saved.rate;selRate.value=String(saved.rate)}}
+setSndUI();buildTL();renderChapterGrid();renderTranscript();renderCodes();
+if(saved&&saved.ci>0&&saved.ci<CH.length){
+  st.ci=saved.ci;st.bi=Math.min(saved.bi||0,CH[saved.ci].beats.length-1);
+  $('#startLbl').textContent='Continue: '+CH[st.ci].title;$('#restartBtn').hidden=false;
+  $('#resume').textContent='Last time you reached chapter '+(CH[st.ci].quiz?'checkpoint':CH[st.ci].num)+'.';
+}
+if(!st.tts)$('#voiceNote').textContent='Voice-over is not available in this browser, so the lesson runs with captions.';
+else $('#voiceNote').textContent='Turn your sound on for the voice-over. Captions are always shown below.';
+go(st.ci,st.bi,false,true);
+window.__lesson={st,go,CH,api};
+})();
+</script></body></html>
